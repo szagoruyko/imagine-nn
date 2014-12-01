@@ -22,8 +22,8 @@ __global__ void maxpool(float *input, float *output, float *indices_x, float *in
   int xx, yy;
 
   // output size
-  const int output_w = (input_w - kW) / dW + 1;
-  const int output_h = (input_h - kH) / dH + 1;
+  const int output_w = ceil(float(input_w - kW) / float(dW) + 1);
+  const int output_h = ceil(float(input_h - kH) / float(dH) + 1);
 
   // compute offsets based on thread/block ID
   int o = blockIdx.x;
@@ -87,8 +87,8 @@ __global__ void maxgradinput(float *gradInput, float *gradOutput, float *indices
   int xx, yy;
 
   // output size
-  int output_w = (input_w - kW) / dW + 1;
-  int output_h = (input_h - kH) / dH + 1;
+  int output_w = ceil(float(input_w - kW) / float(dW) + 1);
+  int output_h = ceil(float(input_h - kH) / float(dH) + 1);
 
   // compute offsets based on thread/block ID
   int o = blockIdx.x;
@@ -140,8 +140,8 @@ __global__ void atomicmaxgradinput(
   int xx, yy;
 
   // output size
-  int output_w = (input_w - kW) / dW + 1;
-  int output_h = (input_h - kH) / dH + 1;
+  int output_w = ceil(float(input_w - kW) / float(dW) + 1);
+  int output_h = ceil(float(input_h - kH) / float(dH) + 1);
 
   // compute offsets based on thread/block ID
   int o = blockIdx.x;
@@ -221,8 +221,8 @@ void SpatialMaxPooling_updateOutput(THCudaTensor* input, THCudaTensor* output, T
     long nInputRows = input->size[2];
     long nInputPlane = input->size[1];
     long nbatch = input->size[0];
-    long nOutputCols = (nInputCols - kW) / dW + 1;
-    long nOutputRows = (nInputRows - kH) / dH + 1;
+    long nOutputCols = ceil(float(nInputCols - kW) / float(dW) + 1);
+    long nOutputRows = ceil(float(nInputRows - kH) / float(dH) + 1);
 
     //luaL_argcheck(L, nInputCols >= kW && nInputRows >= kH, 2, "input image smaller than kernel size");
 
