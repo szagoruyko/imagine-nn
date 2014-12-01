@@ -1,4 +1,2 @@
-require 'cudnn'
+require 'cunn'
 imnn = {}
-include 'Pooling.lua'
-include 'SpatialMaxPoolingCUDNN.lua'
