@@ -1,2 +1,4 @@
 require 'cunn'
-imnn = {}
+inn = {}
+include 'ffi.lua'
+include 'SpatialMaxPooling.lua'
