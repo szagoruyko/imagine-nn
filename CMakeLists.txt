@@ -21,7 +21,7 @@ LIST(APPEND CUDA_NVCC_FLAGS "-arch=sm_20")
 INCLUDE_DIRECTORIES("${Torch_INSTALL_INCLUDE}/THC")
 LINK_DIRECTORIES("${Torch_INSTALL_LIB}")
 
-SET(src-cuda SpatialMaxPooling.cu)
+SET(src-cuda SpatialMaxPooling.cu SpatialAveragePooling.cu)
 FILE(GLOB luasrc *.lua)
 
 CUDA_ADD_LIBRARY(inn MODULE ${src-cuda})
