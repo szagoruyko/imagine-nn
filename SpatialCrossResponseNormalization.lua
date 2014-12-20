@@ -6,7 +6,7 @@ function SpatialCrossResponseNormalization:__init(size, alpha, beta, k)
   parent.__init(self)
   
   self.size = size
-  self.alpha = alpha or 0.001
+  self.alpha = alpha or 0.0001
   self.beta = beta or 0.75
   self.k = k or 1
 

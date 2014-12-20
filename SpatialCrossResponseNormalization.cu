@@ -1,7 +1,7 @@
 #include <THC/THC.h>
 
 extern "C" {
-void LRNforward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* scale, int local_size, float alpha, float beta, int k);
+void LRNforward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* scale, int local_size, float alpha, float beta, float k);
 void LRNbackward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale, int local_size, float alpha, float beta, float k);
 }
 
