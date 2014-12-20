@@ -7,6 +7,7 @@ void SpatialMaxPooling_updateGradInput(THCudaTensor* input, THCudaTensor* gradIn
 void SpatialAveragePooling_updateOutput(THCudaTensor* input, THCudaTensor* output, int kW, int kH, int dW, int dH);
 void SpatialAveragePooling_updateGradInput(THCudaTensor* input, THCudaTensor* gradInput, THCudaTensor* gradOutput, int kW, int kH, int dW, int dH);
 void LRNforward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* scale, int local_size, float alpha, float beta, int k);
+void LRNbackward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale, int local_size, float alpha, float beta, int k);
 ]]
 
 inn.C = ffi.load(package.searchpath('libinn', package.cpath))

@@ -22,3 +22,10 @@ function SpatialCrossResponseNormalization:updateOutput(input)
   C['LRNforward'](input:cdata(), self.output:cdata(), self.scale:cdata(), self.size, self.alpha, self.beta, self.k)
   return self.output
 end
+
+
+function SpatialCrossResponseNormalization:updateGradInput(input, gradOutput)
+  C['LRNbackward'](input:cdata(), self.output:cdata(), gradOutput:cdata(), self.gradInput:cdata(), self.scale:cdata(), 
+  	self.size, self.alpha, self.beta, self.k) 
+  return self.gradInput
+end

@@ -2,6 +2,7 @@
 
 extern "C" {
 void LRNforward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* scale, int local_size, float alpha, float beta, int k);
+void LRNbackward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale, int local_size, float alpha, float beta, int k);
 }
 
 
@@ -74,6 +75,67 @@ __global__ void LRNComputeOutput(const int nthreads, const float* in,
 }
 
 
+__global__ void LRNComputeDiff(const int nthreads, const float* bottom_data,
+    const float* top_data, const float* scale, const float* top_diff,
+    const int num, const int channels, const int height,
+    const int width, const int size, const float negative_beta,
+    const float cache_ratio,
+    float* bottom_diff) {
+  CUDA_KERNEL_LOOP(index, nthreads) {
+    // find out the local offset
+    int w = index % width;
+    int h = (index / width) % height;
+    int n = index / width / height;
+    int offset = (n * channels * height + h) * width + w;
+    int step = height * width;
+    bottom_data += offset;
+    top_data += offset;
+    scale += offset;
+    top_diff += offset;
+    bottom_diff += offset;
+    int head = 0;
+    int pre_pad = size - (size + 1) / 2;
+    int post_pad = size - pre_pad - 1;
+    float accum_ratio = 0;
+    // accumulate values
+    while (head < post_pad) {
+      accum_ratio += top_diff[head * step] * top_data[head * step] /
+          scale[head * step];
+      ++head;
+    }
+    // until we reach size, nothing needs to be subtracted
+    while (head < size) {
+      accum_ratio += top_diff[head * step] * top_data[head * step] /
+          scale[head * step];
+      bottom_diff[(head - post_pad) * step] = top_diff[(head - post_pad) * step]
+          * pow(scale[(head - post_pad) * step], negative_beta) - cache_ratio *
+          bottom_data[(head - post_pad) * step] * accum_ratio;
+      ++head;
+    }
+    // both add and subtract
+    while (head < channels) {
+      accum_ratio += top_diff[head * step] * top_data[head * step] /
+          scale[head * step];
+      accum_ratio -= top_diff[(head - size) * step] *
+          top_data[(head - size) * step] / scale[(head - size) * step];
+      bottom_diff[(head - post_pad) * step] = top_diff[(head - post_pad) * step]
+          * pow(scale[(head - post_pad) * step], negative_beta) - cache_ratio *
+          bottom_data[(head - post_pad) * step] * accum_ratio;
+      ++head;
+    }
+    // subtract only
+    while (head < channels + post_pad) {
+      accum_ratio -= top_diff[(head - size) * step] *
+          top_data[(head - size) * step] / scale[(head - size) * step];
+      bottom_diff[(head - post_pad) * step] = top_diff[(head - post_pad) * step]
+          * pow(scale[(head - post_pad) * step], negative_beta) - cache_ratio *
+          bottom_data[(head - post_pad) * step] * accum_ratio;
+      ++head;
+    }
+  }
+}
+
+
 void LRNforward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* scale, int local_size, float alpha, float beta, int k)
 {
   THCudaTensor_resizeAs(output, input);
@@ -108,3 +170,34 @@ void LRNforward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* scale, 
 }
 
 
+void LRNbackward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale, int local_size, float alpha, float beta, int k)
+{
+  THCudaTensor_resizeAs(gradInput, input);
+  
+  int batchSize;
+  int nInputPlane;
+  int imsize_h;
+  int imsize_w;
+
+  if (input->nDimension == 3) {
+    batchSize = 1;
+    nInputPlane = input->size[0];
+    imsize_h = input->size[1];
+    imsize_w = input->size[2];
+  }
+  else
+  {
+    batchSize = input->size[0];
+    nInputPlane = input->size[1];
+    imsize_h = input->size[2];
+    imsize_w = input->size[3];
+  }
+
+  int n_threads = batchSize * imsize_h * imsize_w;
+  LRNComputeDiff<<<GET_BLOCKS(n_threads), CUDA_NUM_THREADS>>>(
+      n_threads, THCudaTensor_data(input), THCudaTensor_data(output),
+      THCudaTensor_data(scale), THCudaTensor_data(gradOutput), batchSize, nInputPlane, imsize_h, imsize_w,
+      local_size, -beta, float(2. * alpha * beta / local_size),
+      THCudaTensor_data(gradInput));
+
+}
