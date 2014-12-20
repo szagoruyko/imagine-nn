@@ -2,7 +2,7 @@
 
 extern "C" {
 void LRNforward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* scale, int local_size, float alpha, float beta, int k);
-void LRNbackward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale, int local_size, float alpha, float beta, int k);
+void LRNbackward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale, int local_size, float alpha, float beta, float k);
 }
 
 
@@ -136,7 +136,7 @@ __global__ void LRNComputeDiff(const int nthreads, const float* bottom_data,
 }
 
 
-void LRNforward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* scale, int local_size, float alpha, float beta, int k)
+void LRNforward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* scale, int local_size, float alpha, float beta, float k)
 {
   THCudaTensor_resizeAs(output, input);
   THCudaTensor_resizeAs(scale, input);
@@ -170,7 +170,7 @@ void LRNforward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* scale, 
 }
 
 
-void LRNbackward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale, int local_size, float alpha, float beta, int k)
+void LRNbackward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale, int local_size, float alpha, float beta, float k)
 {
   THCudaTensor_resizeAs(gradInput, input);
   
