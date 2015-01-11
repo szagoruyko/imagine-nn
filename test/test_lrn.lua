@@ -2,7 +2,6 @@ dofile 'init.lua'
 require 'ccn2'
 
 -- Only checks output and gradinput with ccn2
--- TODO: add Jacobian test
 
 module = inn.SpatialCrossResponseNormalization(5)
 
