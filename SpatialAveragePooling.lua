@@ -15,6 +15,6 @@ function SpatialAveragePooling:updateOutput(input)
 end
 
 function SpatialAveragePooling:updateGradInput(input, gradOutput)
-  C['SpatialAveragePooling_updateGradInput'](input:cdata(), self.gradInput:cdata(), gradOutput:cdata(), self.kW, self.kH, self.dW, self.dH)
+  C['SpatialAveragePooling_updateGradInput'](input:cdata(), gradOutput:cdata(), self.gradInput:cdata(), self.kW, self.kH, self.dW, self.dH)
   return self.gradInput
 end
