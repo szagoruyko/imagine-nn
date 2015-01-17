@@ -3,8 +3,10 @@
 
 extern "C"
 {
-void SpatialMaxPooling_updateOutput(THCudaTensor* input, THCudaTensor* output, THCudaTensor* indices, int kW, int kH, int dW, int dH);
-void SpatialMaxPooling_updateGradInput(THCudaTensor* input, THCudaTensor* gradInput, THCudaTensor* gradOutput, THCudaTensor* indices, int kW, int kH, int dW, int dH);
+void SpatialMaxPooling_updateOutput(THCState* state, THCudaTensor* input,
+    THCudaTensor* output, THCudaTensor* indices, int kW, int kH, int dW, int dH);
+void SpatialMaxPooling_updateGradInput(THCState* state, THCudaTensor* input,
+    THCudaTensor* gradInput, THCudaTensor* gradOutput, THCudaTensor* indices, int kW, int kH, int dW, int dH);
 }
 
 
@@ -180,7 +182,8 @@ __global__ void atomicmaxgradinput(
   }
 }
 
-void SpatialMaxPooling_updateOutput(THCudaTensor* input, THCudaTensor* output, THCudaTensor* indices, int kW, int kH, int dW, int dH)
+void SpatialMaxPooling_updateOutput(THCState* state, THCudaTensor* input, 
+    THCudaTensor* output, THCudaTensor* indices, int kW, int kH, int dW, int dH)
 {
   float *indices_data;
   float *output_data;
@@ -197,14 +200,14 @@ void SpatialMaxPooling_updateOutput(THCudaTensor* input, THCudaTensor* output, T
 
     //luaL_argcheck(L, nInputCols >= kW && nInputRows >= kH, 2, "input image smaller than kernel size");
 
-    input = THCudaTensor_newContiguous(input);
-    input_data = THCudaTensor_data(input);
+    input = THCudaTensor_newContiguous(state, input);
+    input_data = THCudaTensor_data(state, input);
 
-    THCudaTensor_resize3d(output, nInputPlane, nOutputRows, nOutputCols);
-    THCudaTensor_resize4d(indices, 2, nInputPlane, nOutputRows, nOutputCols);
+    THCudaTensor_resize3d(state, output, nInputPlane, nOutputRows, nOutputCols);
+    THCudaTensor_resize4d(state, indices, 2, nInputPlane, nOutputRows, nOutputCols);
     
-    indices_data = THCudaTensor_data(indices);
-    output_data = THCudaTensor_data(output);
+    indices_data = THCudaTensor_data(state, indices);
+    output_data = THCudaTensor_data(state, output);
 
     // cuda blocks & threads:
     int yblocks = (int)(16L / nInputPlane);
@@ -226,14 +229,14 @@ void SpatialMaxPooling_updateOutput(THCudaTensor* input, THCudaTensor* output, T
 
     //luaL_argcheck(L, nInputCols >= kW && nInputRows >= kH, 2, "input image smaller than kernel size");
 
-    input = THCudaTensor_newContiguous(input);
-    input_data = THCudaTensor_data(input);
+    input = THCudaTensor_newContiguous(state, input);
+    input_data = THCudaTensor_data(state, input);
 
-    THCudaTensor_resize4d(output, nbatch, nInputPlane, nOutputRows, nOutputCols);
-    THCudaTensor_resize5d(indices, 2, nbatch, nInputPlane, nOutputRows, nOutputCols);
+    THCudaTensor_resize4d(state, output, nbatch, nInputPlane, nOutputRows, nOutputCols);
+    THCudaTensor_resize5d(state, indices, 2, nbatch, nInputPlane, nOutputRows, nOutputCols);
 
-    indices_data = THCudaTensor_data(indices);
-    output_data = THCudaTensor_data(output);
+    indices_data = THCudaTensor_data(state, indices);
+    output_data = THCudaTensor_data(state, output);
 
     // cuda blocks & threads:
     int yblocks = (int)(16L / nInputPlane);
@@ -248,7 +251,7 @@ void SpatialMaxPooling_updateOutput(THCudaTensor* input, THCudaTensor* output, T
   }
 
   // clean
-  THCudaTensor_free(input);
+  THCudaTensor_free(state, input);
 
   // check for errors
   cudaError_t err = cudaGetLastError();
@@ -259,7 +262,8 @@ void SpatialMaxPooling_updateOutput(THCudaTensor* input, THCudaTensor* output, T
 }
 
 
-void SpatialMaxPooling_updateGradInput(THCudaTensor* input, THCudaTensor* gradInput, THCudaTensor* gradOutput, THCudaTensor* indices, int kW, int kH, int dW, int dH)
+void SpatialMaxPooling_updateGradInput(THCState* state, THCudaTensor* input,
+    THCudaTensor* gradInput, THCudaTensor* gradOutput, THCudaTensor* indices, int kW, int kH, int dW, int dH)
 {
   bool atomic = (dW != kW) || (dH != kH); 
 
@@ -274,12 +278,12 @@ void SpatialMaxPooling_updateGradInput(THCudaTensor* input, THCudaTensor* gradIn
     long nOutputCols = gradOutput->size[2];
     long nOutputRows = gradOutput->size[1];
 
-    THCudaTensor_resizeAs(gradInput, input);
-    THCudaTensor_zero(gradInput);
+    THCudaTensor_resizeAs(state, gradInput, input);
+    THCudaTensor_zero(state, gradInput);
 
-    indices_data = THCudaTensor_data(indices);
-    gradOutput_data = THCudaTensor_data(gradOutput);
-    gradInput_data = THCudaTensor_data(gradInput);
+    indices_data = THCudaTensor_data(state, indices);
+    gradOutput_data = THCudaTensor_data(state, gradOutput);
+    gradInput_data = THCudaTensor_data(state, gradInput);
 
     // cuda blocks & threads:
     int yblocks = (int)(16L / nInputPlane);
@@ -309,12 +313,12 @@ void SpatialMaxPooling_updateGradInput(THCudaTensor* input, THCudaTensor* gradIn
     long nOutputCols = gradOutput->size[3];
     long nOutputRows = gradOutput->size[2];
 
-    THCudaTensor_resizeAs(gradInput, input);
-    THCudaTensor_zero(gradInput);
+    THCudaTensor_resizeAs(state, gradInput, input);
+    THCudaTensor_zero(state, gradInput);
 
-    indices_data = THCudaTensor_data(indices);
-    gradOutput_data = THCudaTensor_data(gradOutput);
-    gradInput_data = THCudaTensor_data(gradInput);
+    indices_data = THCudaTensor_data(state, indices);
+    gradOutput_data = THCudaTensor_data(state, gradOutput);
+    gradInput_data = THCudaTensor_data(state, gradInput);
 
     // cuda blocks & threads:
     int yblocks = (int)(16L / nInputPlane);

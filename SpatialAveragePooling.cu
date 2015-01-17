@@ -4,8 +4,10 @@
 
 extern "C"
 {
-void SpatialAveragePooling_updateOutput(THCudaTensor* input, THCudaTensor* output, int kW, int kH, int dW, int dH);
-void SpatialAveragePooling_updateGradInput(THCudaTensor* input, THCudaTensor* gradInput, THCudaTensor* gradOutput, int kW, int kH, int dW, int dH);
+void SpatialAveragePooling_updateOutput(THCState* state, THCudaTensor* input,
+    THCudaTensor* output, int kW, int kH, int dW, int dH);
+void SpatialAveragePooling_updateGradInput(THCState* state, THCudaTensor* input,
+    THCudaTensor* gradInput, THCudaTensor* gradOutput, int kW, int kH, int dW, int dH);
 }
 
 
@@ -60,7 +62,8 @@ __global__ void subsample(float *input, float *output,
   }
 }
 
-void SpatialAveragePooling_updateOutput(THCudaTensor* input, THCudaTensor* output, int kW, int kH, int dW, int dH)
+void SpatialAveragePooling_updateOutput(THCState* state, THCudaTensor* input,
+    THCudaTensor* output, int kW, int kH, int dW, int dH)
 {
   if (input->nDimension == 3) {
     long nInputCols = input->size[2];
@@ -69,11 +72,11 @@ void SpatialAveragePooling_updateOutput(THCudaTensor* input, THCudaTensor* outpu
     long nOutputRows = ceil(float(nInputRows - kH) / float(dH) + 1);
     long nInputPlane = input->size[0];
 
-    input = THCudaTensor_newContiguous(input);
-    float* input_data = THCudaTensor_data(input);
+    input = THCudaTensor_newContiguous(state, input);
+    float* input_data = THCudaTensor_data(state, input);
 
-    THCudaTensor_resize3d(output, nInputPlane, nOutputRows, nOutputCols);
-    float* output_data = THCudaTensor_data(output);
+    THCudaTensor_resize3d(state, output, nInputPlane, nOutputRows, nOutputCols);
+    float* output_data = THCudaTensor_data(state, output);
 
     // cuda blocks & threads:
     int yblocks = (int)(16L / nInputPlane);
@@ -92,11 +95,11 @@ void SpatialAveragePooling_updateOutput(THCudaTensor* input, THCudaTensor* outpu
     long nOutputRows = ceil(float(nInputRows - kH) / float(dH) + 1);
     long nInputPlane = input->size[1];
 
-    input = THCudaTensor_newContiguous(input);
-    float* input_data = THCudaTensor_data(input);
+    input = THCudaTensor_newContiguous(state, input);
+    float* input_data = THCudaTensor_data(state, input);
 
-    THCudaTensor_resize4d(output, nbatch, nInputPlane, nOutputRows, nOutputCols);
-    float* output_data = THCudaTensor_data(output);
+    THCudaTensor_resize4d(state, output, nbatch, nInputPlane, nOutputRows, nOutputCols);
+    float* output_data = THCudaTensor_data(state, output);
 
     // cuda blocks & threads:
     int yblocks = (int)(16L / nInputPlane);
@@ -110,7 +113,7 @@ void SpatialAveragePooling_updateOutput(THCudaTensor* input, THCudaTensor* outpu
   }
 
   // clean
-  THCudaTensor_free(input);
+  THCudaTensor_free(state, input);
 
   // check for errors
   cudaError_t err = cudaGetLastError();
@@ -169,19 +172,20 @@ __global__ void subgradinput(float *gradInput, float *gradOutput,
 }
 
 
-void SpatialAveragePooling_updateGradInput(THCudaTensor* input, THCudaTensor* gradOutput, THCudaTensor* gradInput, int kW, int kH, int dW, int dH)
+void SpatialAveragePooling_updateGradInput(THCState* state, THCudaTensor* input,
+    THCudaTensor* gradOutput, THCudaTensor* gradInput, int kW, int kH, int dW, int dH)
 {
   if (input->nDimension == 3) {
     long nInputCols = input->size[2];
     long nInputRows = input->size[1];
     long nInputPlane = input->size[0];
 
-    float *gradOutput_data = THCudaTensor_data(gradOutput);
+    float *gradOutput_data = THCudaTensor_data(state, gradOutput);
     float *gradInput_data;
 
-    THCudaTensor_resizeAs(gradInput, input);
-    THCudaTensor_zero(gradInput);
-    gradInput_data = THCudaTensor_data(gradInput);
+    THCudaTensor_resizeAs(state, gradInput, input);
+    THCudaTensor_zero(state, gradInput);
+    gradInput_data = THCudaTensor_data(state, gradInput);
 
     // cuda blocks & threads:
     int yblocks = (int)(16L / nInputPlane);
@@ -198,12 +202,12 @@ void SpatialAveragePooling_updateGradInput(THCudaTensor* input, THCudaTensor* gr
     long nInputPlane = input->size[1];
     long nbatch = input->size[0];
 
-    float *gradOutput_data = THCudaTensor_data(gradOutput);
+    float *gradOutput_data = THCudaTensor_data(state, gradOutput);
     float *gradInput_data;
 
-    THCudaTensor_resizeAs(gradInput, input);
-    THCudaTensor_zero(gradInput);
-    gradInput_data = THCudaTensor_data(gradInput);
+    THCudaTensor_resizeAs(state, gradInput, input);
+    THCudaTensor_zero(state, gradInput);
+    gradInput_data = THCudaTensor_data(state, gradInput);
 
     // cuda blocks & threads:
     int yblocks = (int)(16L / nInputPlane);
