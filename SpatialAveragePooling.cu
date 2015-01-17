@@ -224,3 +224,4 @@ void SpatialAveragePooling_updateGradInput(THCudaTensor* input, THCudaTensor* gr
   }
 }
 
+#undef CUDA_MAX_THREADS

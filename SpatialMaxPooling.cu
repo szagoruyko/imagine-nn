@@ -346,3 +346,4 @@ void SpatialMaxPooling_updateGradInput(THCudaTensor* input, THCudaTensor* gradIn
   }
 }
 
+#undef CUDA_MAX_THREADS
