@@ -20,4 +20,4 @@ The difference with ```inn.SpatialMax(Average)Pooling``` and ```nn.SpatialMax(Av
 
 ```inn.MeanSubtraction(mean)``` is done to subtract the Imagenet mean directly on GPU. Mean tensor is expanded to BDHW batches without using additional memory.
 
-```inn.SpatialPyramidPooling(({{w1,h1},{w2,h2},...,{wn,hn}})``` is a pyramid of regions obtained by using Spatial Adaptive Max Pooling with parameters ```(w1,h1),...,(wn,hn)``` in the input. The result is a fixed-sized vector of size ```w1*h1*...wn*hn``` for any input dimension. For details see http://arxiv.org/abs/1406.4729
+```inn.SpatialPyramidPooling({{w1,h1},{w2,h2},...,{wn,hn}})``` is a pyramid of regions obtained by using Spatial Adaptive Max Pooling with parameters ```(w1,h1),...,(wn,hn)``` in the input. The result is a fixed-sized vector of size ```w1*h1*...wn*hn``` for any input dimension. For details see http://arxiv.org/abs/1406.4729
