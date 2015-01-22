@@ -55,7 +55,7 @@ __global__ void subsample(float *input, float *output,
         ptr_input += input_w; // next input line
       }
       // Update output
-      *ptr_output = sum;
+      *ptr_output = sum / float(kW*kH);
     }
   }
 }
@@ -157,7 +157,7 @@ __global__ void subgradinput(float *gradInput, float *gradOutput,
     for(xx = xx_start; xx < xx_end; xx+=xx_step) {
       float *ptr_gradInput = gradInput + yy*dH*input_w + xx*dW;
       float *ptr_gradOutput = gradOutput + yy*output_w + xx;
-      float z = *ptr_gradOutput;
+      float z = *ptr_gradOutput/float(kW*kH);
       int kx, ky;
       for(ky = 0; ky < kH; ky++) {
         for(kx = 0; kx < kW; kx++)
