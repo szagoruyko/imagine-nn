@@ -10,11 +10,13 @@ end
 
 
 function SpatialMaxPooling:updateOutput(input)
-  C['SpatialMaxPooling_updateOutput'](input:cdata(), self.output:cdata(), self.indices:cdata(), self.kW, self.kH, self.dW, self.dH)
+  C['SpatialMaxPooling_updateOutput'](cutorch.getState(), input:cdata(), self.output:cdata(),
+  	self.indices:cdata(), self.kW, self.kH, self.dW, self.dH)
   return self.output
 end
 
 function SpatialMaxPooling:updateGradInput(input, gradOutput)
-  C['SpatialMaxPooling_updateGradInput'](input:cdata(), self.gradInput:cdata(), gradOutput:cdata(), self.indices:cdata(), self.kW, self.kH, self.dW, self.dH)
+  C['SpatialMaxPooling_updateGradInput'](cutorch.getState(), input:cdata(), self.gradInput:cdata(),
+  	gradOutput:cdata(), self.indices:cdata(), self.kW, self.kH, self.dW, self.dH)
   return self.gradInput
 end

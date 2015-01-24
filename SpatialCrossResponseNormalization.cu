@@ -1,8 +1,11 @@
 #include <THC/THC.h>
 
 extern "C" {
-void LRNforward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* scale, int local_size, float alpha, float beta, float k);
-void LRNbackward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale, int local_size, float alpha, float beta, float k);
+void LRNforward(THCState* state, THCudaTensor* input, THCudaTensor* output,
+    THCudaTensor* scale, int local_size, float alpha, float beta, float k);
+void LRNbackward(THCState* state, THCudaTensor* input, THCudaTensor* output,
+    THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale,
+    int local_size, float alpha, float beta, float k);
 }
 
 
@@ -136,10 +139,11 @@ __global__ void LRNComputeDiff(const int nthreads, const float* bottom_data,
 }
 
 
-void LRNforward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* scale, int local_size, float alpha, float beta, float k)
+void LRNforward(THCState* state, THCudaTensor* input, THCudaTensor* output,
+    THCudaTensor* scale, int local_size, float alpha, float beta, float k)
 {
-  THCudaTensor_resizeAs(output, input);
-  THCudaTensor_resizeAs(scale, input);
+  THCudaTensor_resizeAs(state, output, input);
+  THCudaTensor_resizeAs(state, scale, input);
   
   int batchSize;
   int nInputPlane;
@@ -162,17 +166,19 @@ void LRNforward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* scale, 
 
   int n_threads = batchSize * imsize_h * imsize_w;
   LRNFillScale<<<GET_BLOCKS(n_threads), CUDA_NUM_THREADS>>>(
-      n_threads, THCudaTensor_data(input), batchSize, nInputPlane, imsize_h, imsize_w, local_size,
-      alpha / local_size, k, THCudaTensor_data(scale));
+      n_threads, THCudaTensor_data(state, input), batchSize, nInputPlane, imsize_h, imsize_w, local_size,
+      alpha / local_size, k, THCudaTensor_data(state, scale));
   n_threads *= nInputPlane;
   LRNComputeOutput<<<GET_BLOCKS(n_threads), CUDA_NUM_THREADS>>>(
-    n_threads, THCudaTensor_data(input), THCudaTensor_data(scale), -beta, THCudaTensor_data(output));
+    n_threads, THCudaTensor_data(state, input), THCudaTensor_data(state, scale), -beta, THCudaTensor_data(state, output));
 }
 
 
-void LRNbackward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale, int local_size, float alpha, float beta, float k)
+void LRNbackward(THCState* state, THCudaTensor* input, THCudaTensor* output,
+    THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale,
+    int local_size, float alpha, float beta, float k)
 {
-  THCudaTensor_resizeAs(gradInput, input);
+  THCudaTensor_resizeAs(state, gradInput, input);
   
   int batchSize;
   int nInputPlane;
@@ -195,9 +201,9 @@ void LRNbackward(THCudaTensor* input, THCudaTensor* output, THCudaTensor* gradOu
 
   int n_threads = batchSize * imsize_h * imsize_w;
   LRNComputeDiff<<<GET_BLOCKS(n_threads), CUDA_NUM_THREADS>>>(
-      n_threads, THCudaTensor_data(input), THCudaTensor_data(output),
-      THCudaTensor_data(scale), THCudaTensor_data(gradOutput), batchSize, nInputPlane, imsize_h, imsize_w,
+      n_threads, THCudaTensor_data(state, input), THCudaTensor_data(state, output),
+      THCudaTensor_data(state, scale), THCudaTensor_data(state, gradOutput), batchSize, nInputPlane, imsize_h, imsize_w,
       local_size, -beta, float(2. * alpha * beta / local_size),
-      THCudaTensor_data(gradInput));
+      THCudaTensor_data(state, gradInput));
 
 }
