@@ -97,6 +97,26 @@ function inntest.SpatialCrossResponseNormalization()
     mytester:assertlt(err, precision, 'error on state (Batch) ')
 end
 
+function inntest.LocalResponseNormalization()
+    local from = 16
+    local inj = 2
+    local ini = inj
+
+    local module = inn.LocalResponseNormalization(3, 5e-5, 0.75):cuda()
+    local input = torch.randn(from,inj,ini):cuda():zero()
+
+    local err = jac.testJacobian(module,input,nil,nil,1e-3)
+    mytester:assertlt(err, precision, 'error on state ')
+
+    -- batch
+    local bs = 32
+    local input = torch.randn(bs,from,inj,ini):cuda():zero()
+    local module = inn.LocalResponseNormalization(3, 5e-5, 0.75):cuda()
+
+    local err = jac.testJacobian(module, input, nil, nil, 1e-3)
+    mytester:assertlt(err, precision, 'error on state (Batch) ')
+end
+
 
 jac = nn.Jacobian
 mytester:add(inntest)
