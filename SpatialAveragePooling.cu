@@ -50,14 +50,19 @@ __global__ void subsample(float *input, float *output,
       float *ptr_input = input + yy*dH*input_w + xx*dW;
       float *ptr_output = output + yy*output_w + xx;
       float sum = 0;
+      int nElements = 0;
       int kx, ky;
       for(ky = 0; ky < kH; ky++) {
-        for(kx = 0; kx < kW; kx++)
-          sum += ptr_input[kx];
+        for(kx = 0; kx < kW; kx++) {
+          if((xx*dW+kx < input_w) & (yy*dH+ky < input_h)) {
+            sum += ptr_input[kx];
+            nElements++;
+          }
+        }
         ptr_input += input_w; // next input line
       }
       // Update output
-      *ptr_output = sum / float(kW*kH);
+      *ptr_output = sum / float(nElements);
     }
   }
 }
