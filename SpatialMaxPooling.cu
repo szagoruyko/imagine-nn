@@ -60,12 +60,14 @@ __global__ void maxpool(float *input, float *output, float *indices_x, float *in
       int kx, ky;
       for(ky = 0; ky < kH; ky++) {
         for(kx = 0; kx < kW; kx++) {
-          float val = ptr_input[kx];
-          if (val > max) {
-            max = val;
-            argmax_x = kx;
-            argmax_y = ky;
-          } 
+          if((xx*dW+kx < input_w) & (yy*dH+ky < input_h)) {
+            float val = ptr_input[kx];
+            if (val > max) {
+              max = val;
+              argmax_x = kx;
+              argmax_y = ky;
+            }
+          }
         }
         ptr_input += input_w; // next input line
       }
