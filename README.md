@@ -9,7 +9,7 @@ Following modules are here for now:
 inn.SpatialMaxPooling(kW,kH,dW,dH)
 inn.SpatialAveragePooling(kW,kH,dW,dH)
 inn.SpatialCrossResponseNormalization(size, [alpha = 0.0001], [beta = 0.75], [k = 1])
-inn.LocalResponseNormalization([size = 3], [alpha = 0.00005], [beta = 0.75])
+inn.SpatialSameResponseNormalization([size = 3], [alpha = 0.00005], [beta = 0.75])
 inn.MeanSubtraction(mean)
 inn.SpatialPyramidPooling({{w1,h1},{w2,h2},...,{wn,hn}})
 ```
@@ -20,7 +20,7 @@ inn.SpatialMax(Average)Pooling(kW,kH,dW,dH) is equal to cudnn.SpatialMax(Average
 
 ```inn.SpatialCrossResponseNormalization``` is local response normalization across maps in BDHW format (thanks to Caffe!). For details refer to https://code.google.com/p/cuda-convnet/wiki/LayerParams#Local_response_normalization_layer_(across_maps)
 
-```inn.LocalResponseNormalization``` is a local response normalization in the same map in BDHW format. For details refer to https://code.google.com/p/cuda-convnet/wiki/LayerParams#Local_response_normalization_layer_(same_map)
+```inn.SpatialSameResponseNormalization``` is a local response normalization in the same map in BDHW format. For details refer to https://code.google.com/p/cuda-convnet/wiki/LayerParams#Local_response_normalization_layer_(same_map)
 
 ```inn.MeanSubtraction(mean)``` is done to subtract the Imagenet mean directly on GPU. Mean tensor is expanded to BDHW batches without using additional memory.
 

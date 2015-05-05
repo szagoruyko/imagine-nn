@@ -1,6 +1,6 @@
-local LocalResponseNormalization, parent = torch.class('inn.LocalResponseNormalization', 'nn.Module')
+local SpatialSameResponseNormalization, parent = torch.class('inn.SpatialSameResponseNormalization', 'nn.Module')
 
-function LocalResponseNormalization:__init(size, alpha, beta)
+function SpatialSameResponseNormalization:__init(size, alpha, beta)
   parent.__init(self)
   
   self.size  = size  or 3
@@ -27,17 +27,17 @@ function LocalResponseNormalization:__init(size, alpha, beta)
   self.modules:add(nn.CDivTable())
 end
 
-function LocalResponseNormalization:updateOutput(input)
+function SpatialSameResponseNormalization:updateOutput(input)
   self.output = self.modules:forward(input)
   return self.output
 end
 
-function LocalResponseNormalization:updateGradInput(input,gradOutput)
+function SpatialSameResponseNormalization:updateGradInput(input,gradOutput)
   self.gradInput = self.modules:backward(input,gradOutput)
   return self.gradInput
 end
 
-function LocalResponseNormalization:type(type)
+function SpatialSameResponseNormalization:type(type)
   parent.type(self,type)
   self.modules:type(type)
   return self
