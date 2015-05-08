@@ -1,14 +1,5 @@
 #include <THC/THC.h>
 
-extern "C" {
-void LRNforward(THCState* state, THCudaTensor* input, THCudaTensor* output,
-    THCudaTensor* scale, int local_size, float alpha, float beta, float k);
-void LRNbackward(THCState* state, THCudaTensor* input, THCudaTensor* output,
-    THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale,
-    int local_size, float alpha, float beta, float k);
-}
-
-
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n)                        \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; \
@@ -138,7 +129,7 @@ __global__ void LRNComputeDiff(const int nthreads, const float* bottom_data,
   }
 }
 
-
+extern "C"
 void LRNforward(THCState* state, THCudaTensor* input, THCudaTensor* output,
     THCudaTensor* scale, int local_size, float alpha, float beta, float k)
 {
@@ -174,6 +165,7 @@ void LRNforward(THCState* state, THCudaTensor* input, THCudaTensor* output,
 }
 
 
+extern "C"
 void LRNbackward(THCState* state, THCudaTensor* input, THCudaTensor* output,
     THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale,
     int local_size, float alpha, float beta, float k)

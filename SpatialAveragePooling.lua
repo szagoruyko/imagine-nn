@@ -10,13 +10,16 @@ end
 
 
 function SpatialAveragePooling:updateOutput(input)
-  C['SpatialAveragePooling_updateOutput'](cutorch.getState(), input:cdata(), 
+  assert(torch.isTypeOf(input, 'torch.CudaTensor'))
+  C.SpatialAveragePooling_updateOutput(cutorch.getState(), input:cdata(), 
   	self.output:cdata(), self.kW, self.kH, self.dW, self.dH)
   return self.output
 end
 
 function SpatialAveragePooling:updateGradInput(input, gradOutput)
-  C['SpatialAveragePooling_updateGradInput'](cutorch.getState(), input:cdata(), 
+  assert(torch.isTypeOf(input, 'torch.CudaTensor'))
+  assert(torch.isTypeOf(gradOutput, 'torch.CudaTensor'))
+  C.SpatialAveragePooling_updateGradInput(cutorch.getState(), input:cdata(), 
   	gradOutput:cdata(), self.gradInput:cdata(), self.kW, self.kH, self.dW, self.dH)
   return self.gradInput
 end

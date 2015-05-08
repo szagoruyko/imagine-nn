@@ -2,14 +2,6 @@
 
 #define CUDA_MAX_THREADS 1024   // this is safe, in reality 256 is our limit
 
-extern "C"
-{
-void SpatialAveragePooling_updateOutput(THCState* state, THCudaTensor* input,
-    THCudaTensor* output, int kW, int kH, int dW, int dH);
-void SpatialAveragePooling_updateGradInput(THCState* state, THCudaTensor* input,
-    THCudaTensor* gradInput, THCudaTensor* gradOutput, int kW, int kH, int dW, int dH);
-}
-
 
 /*
  * Description:
@@ -67,6 +59,7 @@ __global__ void subsample(float *input, float *output,
   }
 }
 
+extern "C"
 void SpatialAveragePooling_updateOutput(THCState* state, THCudaTensor* input,
     THCudaTensor* output, int kW, int kH, int dW, int dH)
 {
@@ -177,6 +170,7 @@ __global__ void subgradinput(float *gradInput, float *gradOutput,
 }
 
 
+extern "C"
 void SpatialAveragePooling_updateGradInput(THCState* state, THCudaTensor* input,
     THCudaTensor* gradOutput, THCudaTensor* gradInput, int kW, int kH, int dW, int dH)
 {

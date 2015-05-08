@@ -18,15 +18,17 @@ function SpatialCrossResponseNormalization:__init(size, alpha, beta, k)
 end
 
 function SpatialCrossResponseNormalization:updateOutput(input)
-  if input:type() ~= 'torch.CudaTensor' then error('CudaTensor expected') end
-  C['LRNforward'](cutorch.getState(), input:cdata(), self.output:cdata(), 
+  assert(torch.isTypeOf(input, 'torch.CudaTensor'))
+  C.LRNforward(cutorch.getState(), input:cdata(), self.output:cdata(), 
   	self.scale:cdata(), self.size, self.alpha, self.beta, self.k)
   return self.output
 end
 
 
 function SpatialCrossResponseNormalization:updateGradInput(input, gradOutput)
-  C['LRNbackward'](cutorch.getState(), input:cdata(), self.output:cdata(),
+  assert(torch.isTypeOf(input, 'torch.CudaTensor'))
+  assert(torch.isTypeOf(gradOutput, 'torch.CudaTensor'))
+  C.LRNbackward(cutorch.getState(), input:cdata(), self.output:cdata(),
   	gradOutput:cdata(), self.gradInput:cdata(), self.scale:cdata(), 
   	self.size, self.alpha, self.beta, self.k) 
   return self.gradInput

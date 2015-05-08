@@ -1,15 +1,6 @@
 #include <THC/THC.h>
 #define CUDA_MAX_THREADS 1024   // this is safe, in reality 256 is our limit
 
-extern "C"
-{
-void SpatialMaxPooling_updateOutput(THCState* state, THCudaTensor* input,
-    THCudaTensor* output, THCudaTensor* indices, int kW, int kH, int dW, int dH);
-void SpatialMaxPooling_updateGradInput(THCState* state, THCudaTensor* input,
-    THCudaTensor* gradInput, THCudaTensor* gradOutput, THCudaTensor* indices, int kW, int kH, int dW, int dH);
-}
-
-
 
 /*
  * Description:
@@ -184,6 +175,7 @@ __global__ void atomicmaxgradinput(
   }
 }
 
+extern "C"
 void SpatialMaxPooling_updateOutput(THCState* state, THCudaTensor* input, 
     THCudaTensor* output, THCudaTensor* indices, int kW, int kH, int dW, int dH)
 {
@@ -264,6 +256,7 @@ void SpatialMaxPooling_updateOutput(THCState* state, THCudaTensor* input,
 }
 
 
+extern "C"
 void SpatialMaxPooling_updateGradInput(THCState* state, THCudaTensor* input,
     THCudaTensor* gradInput, THCudaTensor* gradOutput, THCudaTensor* indices, int kW, int kH, int dW, int dH)
 {
