@@ -42,6 +42,9 @@ function inntest.SpatialMaxPooling()
    mytester:assertlt(berr, 1e-6, torch.typename(module) .. ' - i/o backward err (Batch) ')
 end
 
+-- disabled test because of stochastic nature
+-- to do it properly testJacobian needs to reset seed before every forward
+--[[
 function inntest.SpatialStochasticPooling()
    local from = math.random(1,5)
    local ki = math.random(1,4)
@@ -75,6 +78,7 @@ function inntest.SpatialStochasticPooling()
    mytester:asserteq(ferr, 0, torch.typename(module) .. ' - i/o forward err (Batch) ')
    mytester:assertlt(berr, 1e-6, torch.typename(module) .. ' - i/o backward err (Batch) ')
 end
+]]--
 
 function inntest.SpatialAveragePooling()
    local from = math.random(1,5)
