@@ -1,5 +1,3 @@
-require 'image'
-
 local MeanSubtraction, parent = torch.class('inn.MeanSubtraction', 'nn.Module')
 
 function MeanSubtraction:__init(mean)
