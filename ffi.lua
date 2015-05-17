@@ -13,6 +13,11 @@ void SpatialAveragePooling_updateOutput(struct THCState* state, THCudaTensor* in
 void SpatialAveragePooling_updateGradInput(struct THCState* state, THCudaTensor* input, 
 	THCudaTensor* gradInput, THCudaTensor* gradOutput, int kW, int kH, int dW, int dH);
 
+void SpatialStochasticPooling_updateOutput(THCState* state, THCudaTensor* input, 
+    THCudaTensor* output, THCudaTensor* indices, int kW, int kH, int dW, int dH, bool train);
+void SpatialStochasticPooling_updateGradInput(THCState* state, THCudaTensor* input,
+    THCudaTensor* gradInput, THCudaTensor* gradOutput, THCudaTensor* indices, int kW, int kH, int dW, int dH);
+
 void LRNforward(struct THCState* state, THCudaTensor* input, 
 	THCudaTensor* output, THCudaTensor* scale, 
 	int local_size, float alpha, float beta, float k);
