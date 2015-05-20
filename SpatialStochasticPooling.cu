@@ -190,7 +190,6 @@ void SpatialStochasticPooling_updateGradInput(THCState* state, THCudaTensor* inp
   long nOutputCols = ceil(float(nInputCols - kW) / float(dW)) + 1;
   long nOutputRows = ceil(float(nInputRows - kH) / float(dH)) + 1;
 
-  input = THCudaTensor_newContiguous(state, input);
   gradOutput = THCudaTensor_newContiguous(state, gradOutput);
   THCudaTensor_resizeAs(state, gradInput, input);
   
@@ -203,6 +202,5 @@ void SpatialStochasticPooling_updateGradInput(THCState* state, THCudaTensor* inp
       kH, kW, dH, dW,
       THCudaTensor_data(state, gradInput));
 
-  THCudaTensor_free(state, input);
   THCudaTensor_free(state, gradOutput);
 }
