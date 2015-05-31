@@ -123,11 +123,13 @@ void SpatialStochasticPooling_updateOutput(THCState* state, THCudaTensor* input,
   int count = THCudaTensor_nElement(state, output);
 
   if(train)
-    StoPoolForwardTrain <<< GET_BLOCKS(count), CUDA_NUM_THREADS >>> (count, input_data,
+    StoPoolForwardTrain <<< GET_BLOCKS(count), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state) >>>
+      	(count, input_data,
 	batchSize, nInputPlane, nInputRows, nInputCols, nOutputRows, nOutputCols,
 	kH, kW, dH, dW, indices_data, output_data);
   else
-    StoPoolForwardTest <<< GET_BLOCKS(count), CUDA_NUM_THREADS >>> (count, input_data,
+    StoPoolForwardTest <<< GET_BLOCKS(count), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state) >>>
+      	(count, input_data,
 	batchSize, nInputPlane, nInputRows, nInputCols, nOutputRows, nOutputCols,
 	kH, kW, dH, dW, output_data);
 
@@ -195,7 +197,8 @@ void SpatialStochasticPooling_updateGradInput(THCState* state, THCudaTensor* inp
   
   int count = THCudaTensor_nElement(state, input);
 
-  StoPoolBackward <<< GET_BLOCKS(count), CUDA_NUM_THREADS >>> (count,
+  StoPoolBackward <<< GET_BLOCKS(count), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state) >>> 
+      (count,
       THCudaTensor_data(state, indices),
       THCudaTensor_data(state, gradOutput),
       batchSize, nInputPlane, nInputRows, nInputCols, nOutputRows, nOutputCols,

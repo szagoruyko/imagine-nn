@@ -210,9 +210,10 @@ void SpatialMaxPooling_updateOutput(THCState* state, THCudaTensor* input,
     dim3 threads(32,8);
 
     // run maxpool kernel
-    maxpool <<<blocks, threads>>> (input_data, output_data, 
-                                   indices_data+nInputPlane*nOutputCols*nOutputRows, indices_data,
-                                   nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
+    maxpool <<<blocks, threads, 0, THCState_getCurrentStream(state)>>>
+      		(input_data, output_data, 
+                indices_data+nInputPlane*nOutputCols*nOutputRows, indices_data,
+                nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
   } else {
     long nInputCols = input->size[3];
     long nInputRows = input->size[2];
@@ -239,9 +240,10 @@ void SpatialMaxPooling_updateOutput(THCState* state, THCudaTensor* input,
     dim3 threads(32,8);
 
     // run maxpool kernel
-    maxpool <<<blocks, threads>>> (input_data, output_data,
-                                   indices_data+nbatch*nInputPlane*nOutputCols*nOutputRows, indices_data,
-                                   nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
+    maxpool <<<blocks, threads, 0, THCState_getCurrentStream(state)>>>
+      		(input_data, output_data,
+                indices_data+nbatch*nInputPlane*nOutputCols*nOutputRows, indices_data,
+                nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
   }
 
   // clean
@@ -289,16 +291,18 @@ void SpatialMaxPooling_updateGradInput(THCState* state, THCudaTensor* input,
     if(atomic)
     {
       // run updateGradInput kernel, accumulate gradients atomically
-      atomicmaxgradinput <<<blocks, threads>>> (gradInput_data, gradOutput_data, 
-                                          indices_data+nInputPlane*nOutputCols*nOutputRows, indices_data,
-                                          nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
+      atomicmaxgradinput <<<blocks, threads, 0, THCState_getCurrentStream(state)>>>
+			(gradInput_data, gradOutput_data, 
+                        indices_data+nInputPlane*nOutputCols*nOutputRows, indices_data,
+                        nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
     }
     else
     {
       // run updateGradInput kernel
-      atomicmaxgradinput <<<blocks, threads>>> (gradInput_data, gradOutput_data, 
-                                          indices_data+nInputPlane*nOutputCols*nOutputRows, indices_data,
-                                          nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
+      atomicmaxgradinput <<<blocks, threads, 0, THCState_getCurrentStream(state)>>>
+			(gradInput_data, gradOutput_data, 
+                        indices_data+nInputPlane*nOutputCols*nOutputRows, indices_data,
+                        nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
     }
   } else {
     long nInputCols = input->size[3];
@@ -324,16 +328,18 @@ void SpatialMaxPooling_updateGradInput(THCState* state, THCudaTensor* input,
     if(atomic)
     {
       // run updateGradInput kernel, accumulate gradients atomically
-      atomicmaxgradinput <<<blocks, threads>>> (gradInput_data, gradOutput_data,
-                                          indices_data+nbatch*nInputPlane*nOutputCols*nOutputRows, indices_data,
-                                          nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
+      atomicmaxgradinput <<<blocks, threads, 0, THCState_getCurrentStream(state)>>>
+			(gradInput_data, gradOutput_data,
+                        indices_data+nbatch*nInputPlane*nOutputCols*nOutputRows, indices_data,
+                        nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
     }
     else
     {
       // run updateGradInput kernel, accumulate gradients atomically
-      maxgradinput <<<blocks, threads>>> (gradInput_data, gradOutput_data,
-                                          indices_data+nbatch*nInputPlane*nOutputCols*nOutputRows, indices_data,
-                                          nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
+      maxgradinput <<<blocks, threads, 0, THCState_getCurrentStream(state)>>>
+			(gradInput_data, gradOutput_data,
+                        indices_data+nbatch*nInputPlane*nOutputCols*nOutputRows, indices_data,
+                        nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
     }
   }
 

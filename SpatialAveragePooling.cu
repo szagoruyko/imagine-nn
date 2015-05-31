@@ -83,8 +83,9 @@ void SpatialAveragePooling_updateOutput(THCState* state, THCudaTensor* input,
     dim3 threads(32,8);
 
     // run subsample kernel
-    subsample <<<blocks, threads>>> (input_data, output_data,
-                                     nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
+    subsample <<<blocks, threads, 0, THCState_getCurrentStream(state)>>>
+      		(input_data, output_data,
+                nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
   } else {
     long nInputCols = input->size[3];
     long nInputRows = input->size[2];
@@ -106,8 +107,9 @@ void SpatialAveragePooling_updateOutput(THCState* state, THCudaTensor* input,
     dim3 threads(32,8);
 
     // run subsample kernel
-    subsample <<<blocks, threads>>> (input_data, output_data,
-                                     nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
+    subsample <<<blocks, threads, 0, THCState_getCurrentStream(state)>>>
+      		(input_data, output_data,
+                nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
   }
 
   // clean
@@ -193,8 +195,9 @@ void SpatialAveragePooling_updateGradInput(THCState* state, THCudaTensor* input,
     dim3 threads(32,8);
 
     // run updateGradInput kernel
-    subgradinput <<<blocks, threads>>> (gradInput_data, gradOutput_data,
-                                        nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
+    subgradinput <<<blocks, threads, 0, THCState_getCurrentStream(state)>>>
+      		(gradInput_data, gradOutput_data,
+                nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
   } else {
     long nInputCols = input->size[3];
     long nInputRows = input->size[2];
@@ -215,8 +218,9 @@ void SpatialAveragePooling_updateGradInput(THCState* state, THCudaTensor* input,
     dim3 threads(32,8);
 
     // run updateGradInput kernel
-    subgradinput <<<blocks, threads>>> (gradInput_data, gradOutput_data, 
-                                        nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
+    subgradinput <<<blocks, threads, 0, THCState_getCurrentStream(state)>>>
+      		(gradInput_data, gradOutput_data, 
+                nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
   }
 
   // check for errors
