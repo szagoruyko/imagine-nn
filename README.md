@@ -6,7 +6,7 @@ Universite Paris-Est Marne-la-Vallee IMAGINE/LIGM torch neural network routines
 Following modules are here for now:
 
 ```lua
-inn.SpatialMaxPooling(kW,kH,dW,dH)
+inn.SpatialMaxPooling(kW,kH,dW,dH)  -- OBSOLETE! USE nn.SpatialMaxPooling(kW,kH,dW,dH,padW,padH):ceil()
 inn.SpatialAveragePooling(kW,kH,dW,dH)
 inn.SpatialStochasticPooling(kW,kH,dW,dH)
 inn.SpatialCrossResponseNormalization(size, [alpha = 0.0001], [beta = 0.75], [k = 1])
