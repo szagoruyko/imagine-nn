@@ -103,6 +103,13 @@ void inn_ROIPooling_updateOutput(THCState *state,
       THCudaTensor_data(state, output),
       (int*)THCudaTensor_data(state, indices)
       );
+
+  // check for errors
+  cudaError_t err = cudaGetLastError();
+  if (err != cudaSuccess) {
+    printf("error in inn_ROIPooling_updateOutput.updateGradInput: %s\n", cudaGetErrorString(err));
+    THError("aborting");
+  }
 }
 
 template <typename Dtype>
@@ -199,5 +206,12 @@ void inn_ROIPooling_updateGradInput(THCState *state,
       THCudaTensor_data(state, gradInput),
       THCudaTensor_data(state, rois)
       );
+
+  // check for errors
+  cudaError_t err = cudaGetLastError();
+  if (err != cudaSuccess) {
+    printf("error in inn_ROIPooling_updateGradInput.updateGradInput: %s\n", cudaGetErrorString(err));
+    THError("aborting");
+  }
 }
 
