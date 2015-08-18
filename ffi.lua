@@ -27,7 +27,7 @@ void LRNbackward(struct THCState* state, THCudaTensor* input,
 
 void inn_ROIPooling_updateOutput(THCState *state,
     THCudaTensor *output, THCudaTensor *indices,
-    THCudaTensor *data, THCudaTensor* rois, int W, int H, double spatial_scale)
+    THCudaTensor *data, THCudaTensor* rois, int W, int H, double spatial_scale);
 void inn_ROIPooling_updateGradInput(THCState *state,
     THCudaTensor *gradInput, THCudaTensor *indices, THCudaTensor *data,
     THCudaTensor *gradOutput, THCudaTensor* rois, int W, int H, double spatial_scale);
