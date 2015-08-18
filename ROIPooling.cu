@@ -87,7 +87,7 @@ void inn_ROIPooling_updateOutput(THCState *state,
     THCudaTensor *data, THCudaTensor* rois, int W, int H, double spatial_scale)
 {
   THAssert(THCudaTensor_nDimension(state, data) == 4);
-  THAssert(THCudaTensor_nDimension(state, rois) == 5);
+  THAssert(THCudaTensor_nDimension(state, rois) == 2 && rois->size[1] == 5);
   long num_rois = rois->size[0];
   long nInputPlane = data->size[1];
   THCudaTensor_resize4d(state, output, num_rois, nInputPlane, H, W); 
@@ -184,7 +184,7 @@ void inn_ROIPooling_updateGradInput(THCState *state,
     THCudaTensor *gradOutput, THCudaTensor* rois, int W, int H, double spatial_scale)
 {
   THAssert(THCudaTensor_nDimension(state, data) == 4);
-  THAssert(THCudaTensor_nDimension(state, rois) == 5);
+  THAssert(THCudaTensor_nDimension(state, rois) == 2 && rois->size[1] == 5);
   long num_rois = rois->size[0];
   long nInputPlane = data->size[1];
   THCudaTensor_resizeAs(state, gradInput, data);

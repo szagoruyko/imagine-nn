@@ -39,4 +39,5 @@ end
 function ROIPooling:type(type)
   parent.type(self,type)
   self.gradInput[1] = self.gradInput[1]:type(type)
+  return self
 end
