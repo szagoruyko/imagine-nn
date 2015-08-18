@@ -12,7 +12,7 @@ function ROIPooling:__init(W,H,spatial_scale)
 end
 
 function ROIPooling:setSpatialScale(scale)
-  self.spatial_scale = spatial_scale
+  self.spatial_scale = scale
   return self
 end
 

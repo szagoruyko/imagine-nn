@@ -195,8 +195,9 @@ void inn_ROIPooling_updateGradInput(THCState *state,
   long num_rois = rois->size[0];
   long nInputPlane = data->size[1];
   THCudaTensor_resizeAs(state, gradInput, data);
+  THCudaTensor_zero(state, gradInput);
   
-  long count = THCudaTensor_nElement(state, gradOutput);
+  long count = THCudaTensor_nElement(state, data);
 
   ROIPoolBackward<float><<<GET_BLOCKS(count), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state)>>>(
       count,
