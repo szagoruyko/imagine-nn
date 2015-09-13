@@ -143,9 +143,11 @@ function testJacobianWithRandomROI(cls)
 
     local batchSize = 3
     local numRoi = batchSize
+    local numRepeat = 2
+
     torch.manualSeed(0)
     print('\nTesting module '.. torch.type(cls))
-    for i=1,3 do
+    for i=1,numRepeat do
         print(i)
         local input = torch.rand(batchSize, 1, H, W);
         local roi=randROI(input:size(), numRoi)
@@ -207,8 +209,10 @@ function inntest.compareNNFAndINNROIPooling()
 
     local batchSize = 3
     local numRoi = batchSize
+    local numRepeat = 2
+
     torch.manualSeed(0)
-    for i=1,3 do
+    for i=1,numRepeat do
         local input = torch.rand(batchSize, 1, H, W);
         local roi=randROI(input:size(), numRoi)
         local innModule=inn.ROIPooling(w, h, scale, roi)
