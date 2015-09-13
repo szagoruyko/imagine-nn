@@ -143,22 +143,22 @@ function testJacobianWithRandomROI(cls)
 
     local batchSize = 3
     local numRoi = batchSize
-    local numRepeat = 2
+    local numRepeat = 3
 
     torch.manualSeed(0)
     print('\nTesting module '.. torch.type(cls))
     for i=1,numRepeat do
-        print(i)
+        print('test no '..i)
         local input = torch.rand(batchSize, 1, H, W);
         local roi=randROI(input:size(), numRoi)
         local module=cls.new(h, w, 1, roi)
         local err=jac.testJacobian(module, input, nil, nil, 1e-3)
-        print(err)
+        print('err '..err)
         mytester:assertlt(err, precision, 'error on RoiPooling')
     end
 end
 
-function inntest.ROIPooling()
+function inntest.InnROIPooling()
     local FixedROIPooling, parent = torch.class('FixedROIPooling', 'inn.ROIPooling')
     function FixedROIPooling:__init(W, H, s, roi)
         self.roi = roi 
@@ -179,7 +179,7 @@ end
 
 nnf={}
 dofile('nnf.ROIPooling.lua')
-function inntest.NNFROIPooling()
+function inntest.NnfROIPooling()
     local FixedROIPooling, parent = torch.class('NNFFixedROIPooling', 'nnf.ROIPooling')
     function FixedROIPooling:__init(W, H, s, roi)
         self.roi = roi 
@@ -209,7 +209,7 @@ function inntest.compareNNFAndINNROIPooling()
 
     local batchSize = 3
     local numRoi = batchSize
-    local numRepeat = 2
+    local numRepeat = 5
 
     torch.manualSeed(0)
     for i=1,numRepeat do
