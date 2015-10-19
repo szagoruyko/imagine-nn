@@ -24,6 +24,13 @@ void LRNforward(struct THCState* state, THCudaTensor* input,
 void LRNbackward(struct THCState* state, THCudaTensor* input, 
 	THCudaTensor* output, THCudaTensor* gradOutput, THCudaTensor* gradInput, THCudaTensor* scale, 
 	int local_size, float alpha, float beta, float k);
+
+void inn_ROIPooling_updateOutput(THCState *state,
+    THCudaTensor *output, THCudaTensor *indices,
+    THCudaTensor *data, THCudaTensor* rois, int W, int H, double spatial_scale);
+void inn_ROIPooling_updateGradInput(THCState *state,
+    THCudaTensor *gradInput, THCudaTensor *indices, THCudaTensor *data,
+    THCudaTensor *gradOutput, THCudaTensor* rois, int W, int H, double spatial_scale);
 ]]
 
 inn.C = ffi.load(package.searchpath('libinn', package.cpath))
