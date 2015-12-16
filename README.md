@@ -7,7 +7,7 @@ Following modules are here for now:
 
 ```lua
 inn.SpatialMaxPooling(kW,kH,dW,dH)  -- OBSOLETE! USE nn.SpatialMaxPooling(kW,kH,dW,dH,padW,padH):ceil()
-inn.SpatialAveragePooling(kW,kH,dW,dH)
+inn.SpatialAveragePooling(kW,kH,dW,dH)  -- OBSOLETE! USE nn.SpatialAveragePooling(kW,kH,dW,dH,padW,padH):ceil()
 inn.SpatialStochasticPooling(kW,kH,dW,dH)
 inn.SpatialCrossResponseNormalization(size, [alpha = 0.0001], [beta = 0.75], [k = 1])
 inn.SpatialSameResponseNormalization([size = 3], [alpha = 0.00005], [beta = 0.75])
@@ -15,11 +15,11 @@ inn.MeanSubtraction(mean)
 inn.SpatialPyramidPooling({{w1,h1},{w2,h2},...,{wn,hn}})
 ```
 
-
+_OBSOLETE_
 The difference with ```inn.SpatialMax(Average)Pooling``` and ```nn.SpatialMax(Average)Pooling``` is that output size computed with ceil instead of floor (as in Caffe and cuda-convnet2). Also SpatialAveragePooling does true average pooling, meaning that it divides outputs by kW*kH.
 inn.SpatialMax(Average)Pooling(kW,kH,dW,dH) is equal to cudnn.SpatialMax(Average)Pooling(kW,kH,dW,dH):ceil().
 
-Look at http://arxiv.org/abs/1301.3557 for ```inn.SpatialStochasticPooling``` reference.
+Look at http://arxiv.org/abs/1301.3557 for ```inn.SpatialStochasticPooling``` reference, this is fully working implementation.
 
 ```inn.SpatialCrossResponseNormalization``` is local response normalization across maps in BDHW format (thanks to Caffe!). For details refer to https://code.google.com/p/cuda-convnet/wiki/LayerParams#Local_response_normalization_layer_(across_maps)
 
