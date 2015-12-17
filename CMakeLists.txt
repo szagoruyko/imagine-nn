@@ -24,7 +24,7 @@ LIST(APPEND CUDA_NVCC_FLAGS ${NVCC_FLAGS_EXTRA})
 INCLUDE_DIRECTORIES("${Torch_INSTALL_INCLUDE}/THC")
 LINK_DIRECTORIES("${Torch_INSTALL_LIB}")
 
-SET(src-cuda SpatialAveragePooling.cu SpatialStochasticPooling.cu SpatialCrossResponseNormalization.cu)
+SET(src-cuda SpatialStochasticPooling.cu SpatialCrossResponseNormalization.cu)
 FILE(GLOB luasrc *.lua)
 
 CUDA_ADD_LIBRARY(inn MODULE ${src-cuda})
