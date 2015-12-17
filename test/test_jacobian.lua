@@ -86,6 +86,58 @@ function inntest.SpatialSameResponseNormalization()
     mytester:assertlt(err, precision, 'error on state (Batch) ')
 end
 
+function randROI(sz, n)
+  assert(sz:size()==4, "need 4d size")
+  local roi=torch.Tensor(n,5)
+  for i=1,n do
+    idx=torch.randperm(sz[1])[1]
+    y=torch.randperm(sz[3])[{{1,2}}]:sort()
+    x=torch.randperm(sz[4])[{{1,2}}]:sort()
+    roi[{i,{}}] = torch.Tensor({idx,x[1],y[1],x[2],y[2]})
+  end
+  return roi
+end
+
+function testJacobianWithRandomROI(cls, v2)
+  --pooling grid size
+  local w=4; 
+  local h=4;
+  --input size 
+  local W=w*2;
+  local H=h*2;
+
+  local batchSize = 3
+  local numRoi = batchSize
+  local numRepeat = 3
+
+  torch.manualSeed(0)
+  for i=1,numRepeat do
+    local input = torch.rand(batchSize, 1, H, W);
+    local roi = randROI(input:size(), numRoi)
+    local module = cls.new(h, w, 1, roi)
+    module.v2 = v2
+    local err = jac.testJacobian(module, input, nil, nil, 1e-3)
+    mytester:assertlt(err, precision, 'error on ROIPooling '..(v2 and 'v2' or 'v1'))
+  end
+end
+
+function inntest.ROIPooling()
+  local FixedROIPooling, parent = torch.class('FixedROIPooling', 'inn.ROIPooling')
+  function FixedROIPooling:__init(W, H, s, roi)
+    self.roi = roi 
+    parent.__init(self, W, H, s)
+    self:cuda()
+  end
+
+  function FixedROIPooling:updateOutput(input)
+    return parent.updateOutput(self,{input:cuda(), self.roi})
+  end
+  function FixedROIPooling:updateGradInput(input, gradOutput)
+    return parent.updateGradInput(self,{input:cuda(), self.roi}, gradOutput)[1]
+  end
+
+  testJacobianWithRandomROI(FixedROIPooling, true)
+end
 
 jac = nn.Jacobian
 mytester:add(inntest)
