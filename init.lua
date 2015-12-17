@@ -9,3 +9,4 @@ include 'MeanSubtraction.lua'
 include 'SpatialPyramidPooling.lua'
 include 'SpatialSameResponseNormalization.lua'
 include 'ROIPooling.lua'
+return inn
