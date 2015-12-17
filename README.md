@@ -13,6 +13,7 @@ inn.SpatialCrossResponseNormalization(size, [alpha = 0.0001], [beta = 0.75], [k 
 inn.SpatialSameResponseNormalization([size = 3], [alpha = 0.00005], [beta = 0.75])
 inn.MeanSubtraction(mean)
 inn.SpatialPyramidPooling({{w1,h1},{w2,h2},...,{wn,hn}})
+inn.ROIPooling(W,H):setSpatialScale(scale)
 ```
 
 _OBSOLETE_
@@ -20,6 +21,8 @@ The difference with ```inn.SpatialMax(Average)Pooling``` and ```nn.SpatialMax(Av
 inn.SpatialMax(Average)Pooling(kW,kH,dW,dH) is equal to cudnn.SpatialMax(Average)Pooling(kW,kH,dW,dH):ceil().
 
 Look at http://arxiv.org/abs/1301.3557 for ```inn.SpatialStochasticPooling``` reference, this is fully working implementation.
+
+inn.ROIPooling is Spatial Adaptive Max Pooling layer for region proposals used in FastRCNN with bugfixes and 50 times faster in backprop. Set v2 = false to use it's old version.
 
 ```inn.SpatialCrossResponseNormalization``` is local response normalization across maps in BDHW format (thanks to Caffe!). For details refer to https://code.google.com/p/cuda-convnet/wiki/LayerParams#Local_response_normalization_layer_(across_maps)
 
