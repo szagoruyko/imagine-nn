@@ -10,8 +10,6 @@ function SpatialCrossResponseNormalization:__init(size, alpha, beta, k)
   self.beta = beta or 0.75
   self.k = k or 1
 
-  self.output = torch.Tensor()
-  self.gradInput = torch.Tensor()
   self.scale = torch.Tensor()
 
   self:cuda()
@@ -32,4 +30,9 @@ function SpatialCrossResponseNormalization:updateGradInput(input, gradOutput)
   	gradOutput:cdata(), self.gradInput:cdata(), self.scale:cdata(), 
   	self.size, self.alpha, self.beta, self.k) 
   return self.gradInput
+end
+
+function SpatialCrossResponseNormalization:clearState()
+  self.scale:set()
+  return parent.clearState(self)
 end

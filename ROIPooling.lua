@@ -51,3 +51,10 @@ function ROIPooling:updateGradInput(input,gradOutput)
 
   return self.gradInput
 end
+
+function ROIPooling:clearState()
+  self.gradInput_rois = nil
+  self.gradInput_boxes = nil
+  self.indices:set()
+  return parent.clearState(self)
+end
