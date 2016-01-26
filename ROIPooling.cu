@@ -20,11 +20,12 @@ using std::min;
 
 
 template <typename Dtype>
-__global__ void ROIPoolForward(const int nthreads, const Dtype* bottom_data,
+__global__ void ROIPoolForward(const int nelements, const Dtype* bottom_data,
     const Dtype spatial_scale, const int channels, const int height,
     const int width, const int pooled_height, const int pooled_width,
     const Dtype* bottom_rois, Dtype* top_data, int* argmax_data) {
-  CUDA_KERNEL_LOOP(index, nthreads) {
+  int index = blockDim.x*blockIdx.x + threadIdx.x;
+  if(index < nelements) {
     // (n, c, ph, pw) is an element in the pooled output
     int pw = index % pooled_width;
     int ph = (index / pooled_width) % pooled_height;
@@ -115,11 +116,12 @@ void inn_ROIPooling_updateOutput(THCState *state,
 }
 
 template <typename Dtype>
-__global__ void ROIPoolForwardV2(const int nthreads, const Dtype* bottom_data,
+__global__ void ROIPoolForwardV2(const int nelements, const Dtype* bottom_data,
     const Dtype spatial_scale, const int channels, const int height,
     const int width, const int pooled_height, const int pooled_width,
     const Dtype* bottom_rois, Dtype* top_data, int* argmax_data)  {
-  CUDA_KERNEL_LOOP(index, nthreads) {
+  int index = blockDim.x*blockIdx.x + threadIdx.x;
+  if(index < nelements) {
     // (n, c, ph, pw) is an element in the pooled output
     int pw = index % pooled_width;
     int ph = (index / pooled_width) % pooled_height;
@@ -210,12 +212,13 @@ void inn_ROIPooling_updateOutputV2(THCState *state,
 }
 
 template <typename Dtype>
-__global__ void ROIPoolBackwardAtomic(const int nthreads, const Dtype* top_diff,
+__global__ void ROIPoolBackwardAtomic(const int nelements, const Dtype* top_diff,
     const int* argmax_data, const int num_rois, const Dtype spatial_scale,
     const int channels, const int height, const int width,
     const int pooled_height, const int pooled_width, Dtype* bottom_diff,
     const Dtype* bottom_rois) {
-  CUDA_KERNEL_LOOP(index, nthreads) {
+  int index = blockDim.x*blockIdx.x + threadIdx.x;
+  if(index < nelements) {
     // (n, c, ph, pw) is an element in the pooled output
     int pw = index % pooled_width;
     int ph = (index / pooled_width) % pooled_height;
