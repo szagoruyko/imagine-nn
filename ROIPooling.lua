@@ -51,3 +51,8 @@ function ROIPooling:updateGradInput(input,gradOutput)
 
   return self.gradInput
 end
+
+function ROIPooling:clearState()
+   nn.utils.clear(self, 'gradInput_rois', 'gradInput_boxes', 'indices')
+   return parent.clearState(self)
+end
