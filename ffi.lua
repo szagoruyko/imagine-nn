@@ -17,4 +17,4 @@ void inn_ROIPooling_updateGradInputAtomic(THCState *state,
     THCudaTensor *gradOutput, THCudaTensor* rois, int W, int H, double spatial_scale);
 ]]
 
-inn.C = ffi.load(package.searchpath('libinn', package.cpath))
+return ffi.load(package.searchpath('libinn', package.cpath))
