@@ -80,26 +80,6 @@ function inntest.SpatialPyramidPooling()
    mytester:assertlt(berr, 1e-6, torch.typename(module) .. ' - i/o backward err (Batch) ')
 end
 
-function inntest.SpatialCrossResponseNormalization()
-    local from = 16
-    local inj = 2
-    local ini = inj
-
-    local module = inn.SpatialCrossResponseNormalization(5, 0.0001, 0.75, 2)
-    local input = torch.randn(from,inj,ini):cuda():zero()
-
-    local err = jac.testJacobian(module,input,nil,nil,1e-3)
-    mytester:assertlt(err, precision, 'error on state ')
-
-    -- batch
-    local bs = 32
-    local input = torch.randn(bs,from,inj,ini):cuda():zero()
-    local module = inn.SpatialCrossResponseNormalization(5, 0.0001, 0.75, 2)
-
-    local err = jac.testJacobian(module, input, nil, nil, 1e-3)
-    mytester:assertlt(err, precision, 'error on state (Batch) ')
-end
-
 function inntest.SpatialSameResponseNormalization()
     local from = 16
     local inj = 2
