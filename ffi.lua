@@ -1,5 +1,10 @@
 local ffi = require 'ffi'
 
+local libpath = package.searchpath('libinn', package.cpath)
+if not libpath then return end
+
+require 'cunn'
+
 ffi.cdef[[
 void SpatialStochasticPooling_updateOutput(THCState* state, THCudaTensor* input, 
     THCudaTensor* output, THCudaTensor* indices, int kW, int kH, int dW, int dH, bool train);
@@ -17,4 +22,4 @@ void inn_ROIPooling_updateGradInputAtomic(THCState *state,
     THCudaTensor *gradOutput, THCudaTensor* rois, int W, int H, double spatial_scale);
 ]]
 
-return ffi.load(package.searchpath('libinn', package.cpath))
+return ffi.load(libpath)

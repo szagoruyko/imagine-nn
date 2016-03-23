@@ -18,7 +18,6 @@ Universite Paris-Est MLV Imagine laboratory nn routines
 dependencies = {
    "torch >= 7.0",
    "nn",
-   "cunn"
 }
 
 build = {
