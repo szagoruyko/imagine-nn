@@ -152,6 +152,27 @@ function inntest.ROIPooling()
   testJacobianWithRandomROI(FixedROIPooling, true)
 end
 
+function inntest.SpatialConstAffine()
+   local inj_vals = {math.random(3,5), 1}  -- Also test the inj = 1 spatial case
+
+   for ind, inj in pairs(inj_vals) do
+     local module = inn.SpatialConstAffine(inj)
+
+     -- 2D
+     local nframe = math.random(50,70)
+     local input = torch.Tensor(nframe, inj,3,3)
+
+     local err = jac.testJacobian(module,input)
+     mytester:assertlt(err,precision, 'error on state ')
+
+     -- IO
+     local ferr,berr = jac.testIO(module,input)
+     mytester:asserteq(ferr, 0, torch.typename(module) .. ' - i/o forward err ')
+     mytester:asserteq(berr, 0, torch.typename(module) .. ' - i/o backward err ')
+  end  -- for ind, inj in pairs(inj_vals) do
+end
+
+
 jac = nn.Jacobian
 mytester:add(inntest)
 mytester:run()
