@@ -1,4 +1,4 @@
-require 'cunn'
+require 'nn'
 inn = {}
 inn.C = require 'inn.ffi'
 require 'inn.SpatialMaxPooling'

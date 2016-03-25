@@ -57,8 +57,8 @@ function inntest.SpatialPyramidPooling()
    local ini = (outi-1)*si+ki
    local inj = (outj-1)*sj+kj
 
-   local module = inn.SpatialPyramidPooling({4,4},{3,3}):cuda()
-   local input = torch.rand(from,ini,inj):cuda()
+   local module = inn.SpatialPyramidPooling({4,4},{3,3})
+   local input = torch.rand(from,ini,inj)
 
    local err = jac.testJacobian(module, input, nil, nil, 1e-3)
    mytester:assertlt(err, precision, 'error on state ')
@@ -69,8 +69,8 @@ function inntest.SpatialPyramidPooling()
 
    -- batch
    local nbatch = math.random(2,5)
-   input = torch.rand(nbatch,from,ini,inj):cuda()
-   module = inn.SpatialPyramidPooling({4,4},{3,3}):cuda()
+   input = torch.rand(nbatch,from,ini,inj)
+   module = inn.SpatialPyramidPooling({4,4},{3,3})
 
    local err = jac.testJacobian(module, input, nil, nil, 1e-3)
    mytester:assertlt(err, precision, 'error on state (Batch) ')
@@ -85,16 +85,16 @@ function inntest.SpatialSameResponseNormalization()
     local inj = 2
     local ini = inj
 
-    local module = inn.SpatialSameResponseNormalization(3, 5e-5, 0.75):cuda()
-    local input = torch.randn(from,inj,ini):cuda():zero()
+    local module = inn.SpatialSameResponseNormalization(3, 5e-5, 0.75)
+    local input = torch.randn(from,inj,ini)
 
     local err = jac.testJacobian(module,input,nil,nil,1e-3)
     mytester:assertlt(err, precision, 'error on state ')
 
     -- batch
     local bs = 32
-    local input = torch.randn(bs,from,inj,ini):cuda():zero()
-    local module = inn.SpatialSameResponseNormalization(3, 5e-5, 0.75):cuda()
+    local input = torch.randn(bs,from,inj,ini)
+    local module = inn.SpatialSameResponseNormalization(3, 5e-5, 0.75)
 
     local err = jac.testJacobian(module, input, nil, nil, 1e-3)
     mytester:assertlt(err, precision, 'error on state (Batch) ')
