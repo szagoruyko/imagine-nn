@@ -5,7 +5,7 @@ local jac
 
 local precision = 1e-3
 
-local inntest = {}
+local inntest = torch.TestSuite()
 
 
 -- disabled test because of stochastic nature
