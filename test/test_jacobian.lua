@@ -8,9 +8,6 @@ local precision = 1e-3
 local inntest = torch.TestSuite()
 
 
--- disabled test because of stochastic nature
--- to do it properly testJacobian needs to reset seed before every forward
---[[
 function inntest.SpatialStochasticPooling()
    local from = math.random(1,5)
    local ki = math.random(1,4)
@@ -22,8 +19,12 @@ function inntest.SpatialStochasticPooling()
    local ini = (outi-1)*si+ki
    local inj = (outj-1)*sj+kj
 
-   local module = inn.SpatialStochasticPooling(ki,kj,si,sj):cuda()
    local input = torch.rand(from,ini,inj):cuda()
+   local module = inn.SpatialStochasticPooling(ki,kj,si,sj):cuda()
+   module.updateOutput = function(...)
+      cutorch.manualSeed(11)
+      return inn.SpatialStochasticPooling.updateOutput(...)
+   end
 
    local err = jac.testJacobian(module, input, nil, nil, 1e-3)
    mytester:assertlt(err, precision, 'error on state ')
@@ -35,7 +36,6 @@ function inntest.SpatialStochasticPooling()
    -- batch
    local nbatch = math.random(2,5)
    input = torch.rand(nbatch,from,ini,inj):cuda()
-   module = inn.SpatialStochasticPooling(ki,kj,si,sj):cuda()
 
    local err = jac.testJacobian(module, input, nil, nil, 1e-3)
    mytester:assertlt(err, precision, 'error on state (Batch) ')
@@ -44,7 +44,6 @@ function inntest.SpatialStochasticPooling()
    mytester:asserteq(ferr, 0, torch.typename(module) .. ' - i/o forward err (Batch) ')
    mytester:assertlt(berr, 1e-6, torch.typename(module) .. ' - i/o backward err (Batch) ')
 end
-]]--
 
 function inntest.SpatialPyramidPooling()
    local from = math.random(1,5)
