@@ -1,14 +1,17 @@
 local utils = {}
 
--- a script to simplify trained net by incorporating every SpatialBatchNormalization to SpatialConvolution
--- and BatchNormalization to Linear
+-- a script to simplify trained net by incorporating every Spatial/VolumetricBatchNormalization
+-- to Spatial/VolumetricConvolution and BatchNormalization to Linear
 local function BNtoConv(net)
   for i,v in ipairs(net.modules) do
     if v.modules then
       BNtoConv(v)
     else
-      if (torch.typename(v):find'nn.SpatialBatchNormalization') and net:get(i-1) and
-        (torch.typename(net:get(i-1)):find'SpatialConvolution') then
+      if net:get(i-1) and 
+        ((torch.typename(v):find'nn.SpatialBatchNormalization' and 
+          torch.typename(net:get(i-1)):find'SpatialConvolution') or
+         (torch.typename(v):find'nn.VolumetricBatchNormalization' and 
+          torch.typename(net:get(i-1)):find'VolumetricConvolution')) then
         local conv = net:get(i-1)
         local bn = v
         net:remove(i)
@@ -69,8 +72,10 @@ function utils.foldBatchNorm(net)
   BNtoConv(net)
   BNToLinear(net)
   assert(#net:findModules'nn.SpatialBatchNormalization' == 0)
+  assert(#net:findModules'nn.VolumetricBatchNormalization' == 0)
   assert(#net:findModules'nn.BatchNormalization' == 0)
   assert(#net:findModules'cudnn.SpatialBatchNormalization' == 0)
+  assert(#net:findModules'cudnn.VolumetricBatchNormalization' == 0)  
   assert(#net:findModules'cudnn.BatchNormalization' == 0)
 end
 
