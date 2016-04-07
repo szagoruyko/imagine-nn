@@ -1,4 +1,4 @@
-local SpatialSameResponseNormalization, parent = torch.class('inn.SpatialSameResponseNormalization', 'nn.Sequential')
+local SpatialSameResponseNormalization, parent = torch.class('inn.SpatialSameResponseNormalization', 'nn.Module')
 
 function SpatialSameResponseNormalization:__init(size, alpha, beta)
   parent.__init(self)
@@ -21,7 +21,17 @@ function SpatialSameResponseNormalization:__init(size, alpha, beta)
     :add(numerator)
     :add(denominator)
   
-  self:add(divide)
-  self:add(nn.CDivTable())
+  self._modules = nn.Sequential()
+  self._modules:add(divide)
+  self._modules:add(nn.CDivTable())
 end
 
+function SpatialSameResponseNormalization:updateOutput(input)
+  self.output = self._modules:updateOutput(input)
+  return self.output
+end
+
+function SpatialSameResponseNormalization:updateGradInput(input, gradOutput)
+  self.gradInput = self._modules:updateGradInput(input, gradOutput)
+  return self.gradInput
+end
