@@ -7,12 +7,16 @@ local function BNtoConv(net)
     if v.modules then
       BNtoConv(v)
     else
-      if net:get(i-1) and 
-        ((torch.typename(v):find'nn.SpatialBatchNormalization' and 
-          torch.typename(net:get(i-1)):find'SpatialConvolution') or
-         (torch.typename(v):find'nn.VolumetricBatchNormalization' and 
-          torch.typename(net:get(i-1)):find'VolumetricConvolution')) then
-        local conv = net:get(i-1)
+      local cur = v
+      local pre = net:get(i-1)
+      if prev and 
+        ((torch.typename(cur):find'nn.SpatialBatchNormalization' and 
+          torch.typename(pre):find'nn.SpatialConvolution') or
+         (torch.typename(cur):find'nn.BatchNormalization' and
+          torch.typename(pre):find'nn.Linear') or
+         (torch.typename(cur):find'nn.VolumetricBatchNormalization' and 
+          torch.typename(pre):find'nn.VolumetricConvolution')) then
+        local conv = pre
         local bn = v
         net:remove(i)
         local no = conv.nOutputPlane
@@ -41,42 +45,22 @@ local function BNtoConv(net)
   end
 end
 
-local function BNToLinear(net)
-  for i,v in ipairs(net.modules) do
-    if v.modules then
-      BNToLinear(v)
-    else
-      if (torch.typename(v):find'nn.BatchNormalization') and
-        (torch.typename(net:get(i-1)):find'Linear') then
-        local linear = net:get(i-1)
-        local bn = v
-        net:remove(i)
-        local no = linear.weight:size(1)
-        if bn.running_var then
-          bn.running_std = bn.running_var:add(x.eps):pow(-0.5)
-        end
-        linear.weight:cmul(bn.running_std:view(no,1):expandAs(linear.weight))
-        linear.bias:add(-1,bn.running_mean):cmul(bn.running_std)
-        if bn.affine then
-          linear.bias:cmul(bn.weight):add(bn.bias)
-          linear.weight:cmul(bn.weight:view(no,1):expandAs(linear.weight))
-        end
-      end
-    end
-  end
-end
+local checklist = {
+  'nn.SpatialBatchNormalization',
+  'nn.VolumetricBatchNormalization',
+  'nn.BatchNormalization',
+  'cudnn.SpatialBatchNormalization',
+  'cudnn.VolumetricBatchNormalization',  
+  'cudnn.BatchNormalization',
+}
 
 function utils.foldBatchNorm(net)
   -- works in place!
   BNtoConv(net)
   BNtoConv(net)
-  BNToLinear(net)
-  assert(#net:findModules'nn.SpatialBatchNormalization' == 0)
-  assert(#net:findModules'nn.VolumetricBatchNormalization' == 0)
-  assert(#net:findModules'nn.BatchNormalization' == 0)
-  assert(#net:findModules'cudnn.SpatialBatchNormalization' == 0)
-  assert(#net:findModules'cudnn.VolumetricBatchNormalization' == 0)  
-  assert(#net:findModules'cudnn.BatchNormalization' == 0)
+  for i,v in ipairs(checklist) do
+     assert(#net:findModules(v) == 0)
+  end
 end
 
 
