@@ -152,11 +152,11 @@ function inntest.ROIPooling()
   testJacobianWithRandomROI(FixedROIPooling, true)
 end
 
-function inntest.SpatialConstAffine()
+function inntest.ConstAffine()
    local inj_vals = {math.random(3,5), 1}  -- Also test the inj = 1 spatial case
 
    for ind, inj in pairs(inj_vals) do
-     local module = inn.SpatialConstAffine(inj)
+     local module = inn.ConstAffine(inj)
 
      -- 2D
      local nframe = math.random(50,70)
