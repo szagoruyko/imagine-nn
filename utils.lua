@@ -9,7 +9,7 @@ local function BNtoConv(net)
     else
       local cur = v
       local pre = net:get(i-1)
-      if prev and 
+      if pre and 
         ((torch.typename(cur):find'nn.SpatialBatchNormalization' and 
           torch.typename(pre):find'nn.SpatialConvolution') or
          (torch.typename(cur):find'nn.BatchNormalization' and
