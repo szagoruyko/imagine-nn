@@ -22,15 +22,13 @@ local function BNtoConv(net)
         local no = conv.nOutputPlane
         local conv_w = conv.weight:view(no,-1)
         cutorch.withDevice(conv_w:getDevice(), function()
-           if bn.running_var then
-              bn.running_std = bn.running_var:add(bn.eps):pow(-0.5)
-           end
+           local invstd = bn.running_var and (bn.running_var + bn.eps):pow(-0.5) or bn.running_std
            if not conv.bias then
               conv.bias = bn.running_mean:clone():zero()
               conv.gradBias = conv.bias:clone()
            end
-          conv_w:cmul(bn.running_std:view(no,-1):expandAs(conv_w))
-          conv.bias:add(-1,bn.running_mean):cmul(bn.running_std)
+          conv_w:cmul(invstd:view(no,-1):expandAs(conv_w))
+          conv.bias:add(-1,bn.running_mean):cmul(invstd)
           if bn.affine then
             conv.bias:cmul(bn.weight):add(bn.bias)
             conv_w:cmul(bn.weight:view(no,-1):expandAs(conv_w))
