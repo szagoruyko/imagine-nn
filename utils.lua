@@ -21,7 +21,7 @@ local function BNtoConv(net)
         net:remove(i)
         local no = conv.nOutputPlane
         local conv_w = conv.weight:view(no,-1)
-        cutorch.withDevice(conv_w:getDevice(), function()
+        local fold = function()
            local invstd = bn.running_var and (bn.running_var + bn.eps):pow(-0.5) or bn.running_std
            if not conv.bias then
               conv.bias = bn.running_mean:clone():zero()
@@ -37,7 +37,8 @@ local function BNtoConv(net)
              conv:resetWeightDescriptors()
              assert(conv.biasDesc)
           end
-        end)
+        end
+        if cutorch then cutorch.withDevice(conv_w:getDevice(),fold) else fold() end
       end
     end
   end
@@ -57,7 +58,8 @@ function utils.foldBatchNorm(net)
   BNtoConv(net)
   BNtoConv(net)
   for i,v in ipairs(checklist) do
-     assert(#net:findModules(v) == 0)
+     local modules = net:findModules(v)
+     if #modules > 0 then print('Couldnt fold these:', modules) end
   end
 end
 
