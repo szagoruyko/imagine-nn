@@ -22,7 +22,7 @@ void inn_ROIPooling_updateGradInputAtomic(THCState *state,
     THCudaTensor *gradOutput, THCudaTensor* rois, int W, int H, double spatial_scale);
 
 void inn_ROIWarping_updateOutput(THCState *state,
-    THCudaTensor *output, THCudaTensor *indices,
+    THCudaTensor *output, 
     THCudaTensor *data, THCudaTensor* rois, THCudaTensor* delta_rois, int W, int H, double spatial_scale);
 ]]
 

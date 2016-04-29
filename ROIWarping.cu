@@ -23,7 +23,7 @@ template <typename Dtype>
 __global__ void ROIWarpForward(const int nthreads, const Dtype* bottom_data,
     const Dtype spatial_scale, const int channels, const int height,
     const int width, const int pooled_height, const int pooled_width,
-    const Dtype* bottom_rois, const Dtype* bottom_delta_rois, Dtype* top_data, int* argmax_data) {
+    const Dtype* bottom_rois, const Dtype* bottom_delta_rois, Dtype* top_data/*, int* argmax_data*/) {
   CUDA_KERNEL_LOOP(index, nthreads) {
     // (n, c, ph, pw) is an element in the pooled output
     int pw = index % pooled_width;
@@ -118,7 +118,7 @@ __global__ void ROIWarpForward(const int nthreads, const Dtype* bottom_data,
 
 extern "C"
 void inn_ROIWarping_updateOutput(THCState *state,
-    THCudaTensor *output, THCudaTensor *indices,
+    THCudaTensor *output, /*THCudaTensor *indices,*/
     THCudaTensor *data, THCudaTensor* rois, THCudaTensor* delta_rois, int W, int H, double spatial_scale)
 {
   THAssert(THCudaTensor_nDimension(state, data) == 4);
@@ -133,7 +133,7 @@ void inn_ROIWarping_updateOutput(THCState *state,
   long num_rois = rois->size[0];
   long nInputPlane = data->size[1];
   THCudaTensor_resize4d(state, output, num_rois, nInputPlane, H, W);
-  THCudaTensor_resize4d(state, indices, num_rois, nInputPlane, H, W);
+  //THCudaTensor_resize4d(state, indices, num_rois, nInputPlane, H, W);
 
   long count = THCudaTensor_nElement(state, output);
 
@@ -143,8 +143,8 @@ void inn_ROIWarping_updateOutput(THCState *state,
       spatial_scale, nInputPlane, data->size[2], data->size[3], H, W,
       THCudaTensor_data(state, rois),
       THCudaTensor_data(state, delta_rois),
-      THCudaTensor_data(state, output),
-      (int*)THCudaTensor_data(state, indices)
+      THCudaTensor_data(state, output) /*,
+      (int*)THCudaTensor_data(state, indices)*/
       );
 
   // check for errors

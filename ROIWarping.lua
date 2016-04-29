@@ -8,8 +8,7 @@ function ROIWarping:__init(W,H,spatial_scale)
   self.H = H
   self.spatial_scale = spatial_scale or 1
   self.gradInput = {}
-  self.indices = torch.Tensor()
-  print('hi11111111') 
+  --self.indices = torch.Tensor()
 end
 
 function ROIWarping:setSpatialScale(scale)
@@ -35,21 +34,13 @@ function ROIWarping:updateOutput(input)
   --print(rois)
   --print(delta_rois)
   
-  --if self.v2 then
-  --  C.inn_ROIWarping_updateOutputV2(cutorch.getState(),
-  --    self.output:cdata(), self.indices:cdata(), data:cdata(), rois:cdata(),
-  --    self.W, self.H, self.spatial_scale)
-  --else
-  --if #input == 3 then 
-    C.inn_ROIWarping_updateOutput(cutorch.getState(),
-      self.output:cdata(), self.indices:cdata(), data:cdata(), rois:cdata(), delta_rois:cdata(), 
-      self.W, self.H, self.spatial_scale)
-  --elseif #input == 2 then 
-  --  C.inn_ROIWarping_updateOutput(cutorch.getState(),
-  --    self.output:cdata(), self.indices:cdata(), data:cdata(), rois:cdata(),
-  --    self.W, self.H, self.spatial_scale)    
-  --end
-  --end
+  --C.inn_ROIWarping_updateOutput(cutorch.getState(),
+  --  self.output:cdata(), self.indices:cdata(), data:cdata(), rois:cdata(), delta_rois:cdata(), 
+  --  self.W, self.H, self.spatial_scale)
+  C.inn_ROIWarping_updateOutput(cutorch.getState(),
+    self.output:cdata(), data:cdata(), rois:cdata(), delta_rois:cdata(), 
+    self.W, self.H, self.spatial_scale)
+
   return self.output
 end
 
@@ -71,9 +62,9 @@ function ROIWarping:updateGradInput(input,gradOutput)
     self.gradInput_delta_rois = self.gradInput_delta_rois or data.new()
   end 
 
-  C.inn_ROIWarping_updateGradInputAtomic(cutorch.getState(),
-    self.gradInput_boxes:cdata(), self.indices:cdata(), data:cdata(),
-    gradOutput:cdata(), rois:cdata(), self.W, self.H, self.spatial_scale)
+  --C.inn_ROIWarping_updateGradInputAtomic(cutorch.getState(),
+  --  self.gradInput_boxes:cdata(), self.indices:cdata(), data:cdata(),
+  --  gradOutput:cdata(), rois:cdata(), self.W, self.H, self.spatial_scale)
 
   self.gradInput_rois:resizeAs(rois):zero()
 
