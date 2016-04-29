@@ -20,6 +20,10 @@ void inn_ROIPooling_updateOutputV2(THCState *state,
 void inn_ROIPooling_updateGradInputAtomic(THCState *state,
     THCudaTensor *gradInput, THCudaTensor *indices, THCudaTensor *data,
     THCudaTensor *gradOutput, THCudaTensor* rois, int W, int H, double spatial_scale);
+
+void inn_ROIWarping_updateOutput(THCState *state,
+    THCudaTensor *output, THCudaTensor *indices,
+    THCudaTensor *data, THCudaTensor* rois, THCudaTensor* delta_rois, int W, int H, double spatial_scale);
 ]]
 
 return ffi.load(libpath)

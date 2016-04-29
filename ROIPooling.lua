@@ -9,7 +9,8 @@ function ROIPooling:__init(W,H,spatial_scale)
   self.spatial_scale = spatial_scale or 1
   self.gradInput = {}
   self.indices = torch.Tensor()
-  self.v2 = true
+  --self.v2 = true
+  self.v2 = false
 end
 
 function ROIPooling:setSpatialScale(scale)
