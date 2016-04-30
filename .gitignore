@@ -1,4 +1,4 @@
-*.swp
-*.swo
+*.sw*
+*.bak*
 build
 build/*

@@ -7,7 +7,7 @@ local precision = 1e-3
 
 local inntest = torch.TestSuite()
 
-
+--[[
 function inntest.SpatialStochasticPooling()
    local from = math.random(1,5)
    local ki = math.random(1,4)
@@ -98,7 +98,7 @@ function inntest.SpatialSameResponseNormalization()
     local err = jac.testJacobian(module, input, nil, nil, 1e-3)
     mytester:assertlt(err, precision, 'error on state (Batch) ')
 end
-
+]]
 function randROI(sz, n)
   assert(sz:size()==4, "need 4d size")
   local roi=torch.Tensor(n,5)
@@ -127,7 +127,7 @@ function testJacobianWithRandomROI(cls, v2)
   for i=1,numRepeat do
     local input = torch.rand(batchSize, 1, H, W);
     local roi = randROI(input:size(), numRoi)
-    local module = cls.new(h, w, 1, roi)
+    local module = cls.new(w, h, 1, roi)
     module.v2 = v2
     local err = jac.testJacobian(module, input, nil, nil, 1e-3)
     mytester:assertlt(err, precision, 'error on ROIPooling '..(v2 and 'v2' or 'v1'))
@@ -150,6 +150,49 @@ function inntest.ROIPooling()
   end
 
   testJacobianWithRandomROI(FixedROIPooling, true)
+end
+
+function testJacobianWithRandomROIForROIWarping(cls)
+  --pooling grid size
+  local w=4; 
+  local h=4;
+  --input size 
+  local W=w*2;
+  local H=h*2;
+
+  local batchSize = 3
+  local numRoi = batchSize
+  local numRepeat = 3
+
+  torch.manualSeed(0)
+  for i=1,numRepeat do
+    local input = torch.rand(batchSize, 1, H, W);
+    local roi = randROI(input:size(), numRoi)
+    local delta_roi = roi:clone()
+    delta_roi[{{}, {2, 5}}] = 0; --torch.rand(numRoi, 4) 
+    local module = cls.new(w, h, 1, roi, delta_roi)
+    local err = jac.testJacobian(module, input, nil, nil, 1e-3)
+    mytester:assertlt(err, precision, 'error on ROIWarping ')
+  end
+end
+
+function inntest.ROIWarping()
+  local FixedROIWarping, parent = torch.class('FixedROIWarping', 'inn.ROIWarping')
+  function FixedROIWarping:__init(W, H, s, roi, delta_roi)
+    self.roi = roi
+    self.delta_roi = delta_roi
+    parent.__init(self, W, H, s)
+    self:cuda()
+  end
+
+  function FixedROIWarping:updateOutput(input)
+    return parent.updateOutput(self,{input:cuda(), self.roi, self.delta_roi})
+  end
+  function FixedROIWarping:updateGradInput(input, gradOutput)
+    return parent.updateGradInput(self,{input:cuda(), self.roi, self.delta_roi}, gradOutput)[1]
+  end
+
+  testJacobianWithRandomROIForROIWarping(FixedROIWarping)
 end
 
 jac = nn.Jacobian
