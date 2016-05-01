@@ -157,13 +157,14 @@ __global__ void ROIWarpForward(const int nthreads, const Dtype* bottom_data,
         gain_y = (hdiff - abs((h_ - hctr))) / hdiff; 
         gain = gain_x * gain_y;
         //val = val + gain * bottom_data[bottom_index];
-        val = val + bottom_data[bottom_index];
+        //val = val + bottom_data[bottom_index];
+        val = val + gain;
       }
     }
     //top_data[index] = maxval;
     //argmax_data[index] = maxidx;
-    top_data[index] = val;
-    //top_data[index] = static_cast<int>(floor(static_cast<Dtype>(ph) * bin_size_h)) + roi_start_h; 
+    //top_data[index] = val;
+    top_data[index] = ph; //static_cast<int>(floor(static_cast<Dtype>(ph) * bin_size_h)) + roi_start_h; 
   }
 }
 
@@ -235,7 +236,7 @@ void inn_ROIWarping_updateOutput(THCState *state,
 //}
 
 template <typename Dtype>
-__global__ void ROIWarpBackward(const int nthreads, const Dtype* bottom_data,
+__global__ void ROIWarpBackward(const int nthreads, /*const Dtype* bottom_data,*/
     const Dtype spatial_scale, const int channels, const int height, const int width, 
     const int pooled_height, const int pooled_width,
     const Dtype* bottom_rois, const Dtype* bottom_delta_rois, 
@@ -390,9 +391,8 @@ __global__ void ROIWarpBackward(const int nthreads, const Dtype* bottom_data,
                                                                                               // dgy / dhctr  =   1 / hdiff ( if h >= hctr )
                                                                                               // dgy / dhdiff = - 1 / hdiff ( else )
         gain = gain_x * gain_y;
-        //val = val + gain * bottom_data[bottom_index];
-        //bottom_diff_data[bottom_index] = bottom_diff_data[bottom_index] + gain * top_diff[index];
-        bottom_diff_data[bottom_index] = bottom_diff_data[bottom_index] + top_diff[index];
+        //bottom_diff_data[bottom_index] = bottom_diff_data[bottom_index] + gain * top_diff[index]; //val = val + gain * bottom_data[bottom_index];
+        bottom_diff_data[bottom_index] = ph; //static_cast<int>(floor(static_cast<Dtype>(ph) * bin_size_h)) + roi_start_h;
 
         // buffer 
         Dtype coeff_x = w >= wctr ? 1 : -1; coeff_x = coeff_x * gain_y * spatial_scale * src_w_ * top_diff[index]; 
@@ -426,10 +426,6 @@ extern "C"
 void inn_ROIWarping_updateGradInputAtomic(THCState *state,
     THCudaTensor *gradInput_data, THCudaTensor *data,
     THCudaTensor *gradInput_delta_rois, THCudaTensor *delta_rois,
-    //THCudaTensor *gradInput_delta_rois_dx,
-    //THCudaTensor *gradInput_delta_rois_dy,
-    //THCudaTensor *gradInput_delta_rois_dw,
-    //THCudaTensor *gradInput_delta_rois_dh,
     THCudaTensor *gradInput_delta_rois_buffer,
     THCudaTensor *gradOutput, THCudaTensor* rois, int W, int H, double spatial_scale)
 {
@@ -472,7 +468,7 @@ void inn_ROIWarping_updateGradInputAtomic(THCState *state,
   //    );
   ROIWarpBackward<float><<<GET_BLOCKS(count), CUDA_NUM_THREADS / 2, 0, THCState_getCurrentStream(state)>>>(
       count,
-      THCudaTensor_data(state, data),
+      //THCudaTensor_data(state, data),
       spatial_scale, nInputPlane, data->size[2], data->size[3], H, W,
       THCudaTensor_data(state, rois),
       THCudaTensor_data(state, delta_rois),

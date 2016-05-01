@@ -72,10 +72,6 @@ function ROIWarping:updateGradInput(input,gradOutput)
   C.inn_ROIWarping_updateGradInputAtomic(cutorch.getState(),
     self.gradInput_boxes:cdata(), data:cdata(),
     self.gradInput_delta_rois:cdata(), delta_rois:cdata(),
-    --self.gradInput_delta_rois_dx:cdata(),  
-    --self.gradInput_delta_rois_dy:cdata(),  
-    --self.gradInput_delta_rois_dw:cdata(),  
-    --self.gradInput_delta_rois_dh:cdata(),  
     self.gradInput_delta_rois_buffer:cdata(),  
     gradOutput:cdata(), rois:cdata(), self.W, self.H, self.spatial_scale)
 
