@@ -98,14 +98,19 @@ __global__ void ROIWarpForward(const int nthreads, const Dtype* bottom_data,
     //                                 * bin_size_w)) + roi_start_w;    // dwe / drsw = 1 
     //int hend = static_cast<int>(ceil(static_cast<Dtype>(ph + 1)       // dhe / dbh = (ph+1)
     //                                 * bin_size_h)) + roi_start_h;    // dhe / drsh = 1
-    int wstart = static_cast<int>(floor(static_cast<Dtype>(pw)        // dws / dbw = pw
-                                        * bin_size_w + roi_start_w)); // dws / drsw = 1
-    int hstart = static_cast<int>(floor(static_cast<Dtype>(ph)        // dhs / dbh = ph
-                                        * bin_size_h + roi_start_h)); // dhs / drsh = 1
-    int wend = static_cast<int>(ceil(static_cast<Dtype>(pw + 1)       // dwe / dbw = (pw+1)
-                                     * bin_size_w + roi_start_w));    // dwe / drsw = 1
-    int hend = static_cast<int>(ceil(static_cast<Dtype>(ph + 1)       // dhe / dbh = (ph+1)
-                                     * bin_size_h + roi_start_h));    // dhe / drsh = 1 
+    Dtype wstart_ = static_cast<Dtype>(pw) * bin_size_w + roi_start_w; // dws / dbw = pw
+                                                                       // dws / drsw = 1
+    Dtype hstart_ = static_cast<Dtype>(ph) * bin_size_h + roi_start_h; // dhs / dbh = ph
+                                                                       // dhs / drsh = 1
+    Dtype wend_ = static_cast<Dtype>(pw+1) * bin_size_w + roi_start_w; // dwe / dbw = (pw+1)
+                                                                       // dwe / drsw = 1
+    Dtype hend_ = static_cast<Dtype>(ph+1) * bin_size_h + roi_start_h; // dhe / dbh = (ph+1)
+                                                                       // dhe / drsh = 1
+    int wstart = static_cast<int>(floor(wstart_)); 
+    int hstart = static_cast<int>(floor(hstart_)); 
+    int wend   = static_cast<int>( ceil(wend_)); 
+    int hend   = static_cast<int>( ceil(hend_));
+ 
     // dws / dcx = dws / dbw * dbw / dcx + dws / drsw * drsw / dcx = pw * 0 + 1 * spatial_scale * src_w     = spatial_scale * src_w
     // dwe / dcx = dwe / dbw * dbw / dcx + dwe / drsw * drsw / dcx = (pw+1) * 0 + 1 * spatial_scale * src_w = spatial_scale * src_w
 
@@ -118,15 +123,11 @@ __global__ void ROIWarpForward(const int nthreads, const Dtype* bottom_data,
     // dhs / dsy = dhs / dbh * dbh / dsy + dhs / drsh * drsh / dsy = ph * 1 / pooled_height * spatial_scale * src_h * exp(dsy) + 1 * (-0.5) * spatial_scale * src_h * exp(dsy) = (ph / pooled_height - 0.5) * spatial_scale * src_h * exp(dsy) 
     // dhe / dsy = dhe / dbh * dbh / dsy + dhe / drsh * drsh / dsy = (ph+1) * 1 / pooled_height * spatial_scale * src_h * exp(dsy) + 1 * 0.5 * spatial_scale * src_h * exp(dsy) = ((ph+1)/pooled_height + 0.5) * spatial_scale * src_h * exp(dsy)  
 
-    //top_data[index] = static_cast<Dtype>(hend-1-hstart)+1;
-    //top_data[index] = hend;
-    //top_data[index] = wend; //hend;
-    //top_data[index] = wstart+1; //hstart+1;
+    Dtype wctr =  (wend_ + wstart_) * 0.5; // dwctr / dwe = 0.5; dwctr / dws = 0.5
+    Dtype hctr =  (hend_ + hstart_) * 0.5; // dhctr / dhe = 0.5; dhctr / dhs = 0.5
+    Dtype wdiff = (wend_ - wstart_) + 1;   // dwdiff / dwe = 1; dwdiff / dws = -1
+    Dtype hdiff = (hend_ - hstart_) + 1;   // dhdiff / dhe = 1; dhdiff / dhs = -1
 
-    Dtype wctr = static_cast<Dtype>(wend-1+wstart) * 0.5;    // dwctr / dwe = 0.5; dwctr / dws = 0.5 
-    Dtype hctr = static_cast<Dtype>(hend-1+hstart) * 0.5;    // dhctr / dhe = 0.5; dhctr / dhs = 0.5 
-    Dtype wdiff = max(static_cast<Dtype>(wend-1-wstart), 1.);         // dwdiff / dwe = 1; dwdiff / dws = -1
-    Dtype hdiff = max(static_cast<Dtype>(hend-1-hstart), 1.);         // dhdiff / dhe = 1; dhdiff / dhs = -1
     // dwctr / dcx = dwctr / dwe * dwe / dcx + dwctr / dws * dws / dcx = 0.5 * spatial_scale * src_w + 0.5 * spatial_scale * src_w = spatial_scale * src_w 
     // dwdiff / dcx = dwdiff / dwe * dwe / dcx + dwdiff / dws * dws / dcx = 1 * spatial_scale * src_w -  1  * spatial_scale * src_w = 0 
 
@@ -140,20 +141,37 @@ __global__ void ROIWarpForward(const int nthreads, const Dtype* bottom_data,
     //                                                                    = (wend-wstart) >= 1 ? (1 / pooled_width + 1) * spatial_scale * src_w * exp(dsx) : 0
     // dhctr / dsy  = (ph + 0.5) / pooled_height * spatial_scale * src_h * exp(dsy)
     // dhdiff / dsy = (hend-hstart) >= 1 ? (1 / pooled_height + 1) * spatial_scale * src_h * exp(dsy) : 0
-    
+ 
+    //top_data[index] = static_cast<Dtype>(hend-1-hstart)+1;
+    //top_data[index] = hend; //wend;
+    //top_data[index] = hstart+1; // wstart+1;
+    //top_data[index] = wdiff;
+    //top_data[index] = hctr+1;
+    //top_data[index] = wctr+1;
+   
     // Add roi offsets and clip to input boundaries
     hstart = min(max(hstart, 0), height);         //  
     hend = min(max(hend, 0), height);
     wstart = min(max(wstart, 0), width);
     wend = min(max(wend, 0), width);
 
+    //top_data[index] = hstart+1; 
+    //top_data[index] = wstart+1;
+
+    // Auxilliary variables used in backprop 
+    Dtype w_mask = 0, h_mask = 0; 
+    Dtype dgx_final_dwctr_all  = 0;
+    Dtype dgx_final_dwdiff_all = 0;
+    Dtype dgy_final_dhctr_all  = 0;
+    Dtype dgy_final_dhdiff_all = 0; 
     // Define an empty pooling region to be zero
     Dtype val = 0; Dtype gain = 0, gain_x = 0, gain_y = 0, gain_x_all = 0, gain_y_all = 0;   
     bottom_data += (roi_batch_ind * channels + c) * height * width;
     for (int h = hstart; h < hend; ++h) {
+      Dtype h_ = h; 
       for (int w = wstart; w < wend; ++w) {
         int bottom_index = h * width + w;
-        Dtype w_ = w, h_ = h;  
+        Dtype w_ = w;  
         //gain_x = max(0., 1 - abs( dst_ctr_x + static_cast<Dtype>(pw) / static_cast<Dtype>(pooled_width) * dst_scl_x - w ));
         //gain_y = max(0., 1 - abs( dst_ctr_y + static_cast<Dtype>(ph) / static_cast<Dtype>(pooled_height) * dst_scl_y - h));
         gain_x = (wdiff - abs((w_ - wctr))) / wdiff; 
@@ -162,10 +180,22 @@ __global__ void ROIWarpForward(const int nthreads, const Dtype* bottom_data,
 
         val = val + gain * bottom_data[bottom_index];
         //val = val + gain;
-        if (h == hstart) 
+        //val = val + 1;
+
+        if (h == hstart) { 
           gain_x_all = gain_x_all + gain_x;
+
+          // Update information used in backprop
+          w_mask = w_ >= wctr ? 1 : -1;
+          dgx_final_dwctr_all  = dgx_final_dwctr_all  + w_mask * 1 / wdiff;
+          dgx_final_dwdiff_all = dgx_final_dwdiff_all + w_mask * (w_-wctr) / (wdiff*wdiff);
+        }
       }
       gain_y_all = gain_y_all + gain_y;
+        
+      h_mask = h >= hctr ? 1 : -1;
+      dgy_final_dhctr_all  = dgy_final_dhctr_all  + h_mask * 1 / hdiff;
+      dgy_final_dhdiff_all = dgy_final_dhdiff_all + h_mask * (h_-hctr) / (hdiff*hdiff);
     }
     if (gain_x_all > 1e-10)
       val = val / gain_x_all;
@@ -175,13 +205,17 @@ __global__ void ROIWarpForward(const int nthreads, const Dtype* bottom_data,
 
     //top_data[index] = gain_x_all; 
     //top_data[index] = gain_y_all; 
-    int buffer_index = n * (channels * pooled_height * pooled_width * 6) + c * (pooled_height * pooled_width * 6) + ph * (pooled_width * 6) + pw * 6;
+    int buffer_index = n * (channels * pooled_height * pooled_width * 10) + c * (pooled_height * pooled_width * 10) + ph * (pooled_width * 10) + pw * 10;
     top_data_buffer[buffer_index+0] = wctr;
     top_data_buffer[buffer_index+1] = wdiff;
     top_data_buffer[buffer_index+2] = hctr;
     top_data_buffer[buffer_index+3] = hdiff; 
     top_data_buffer[buffer_index+4] = gain_x_all; 
-    top_data_buffer[buffer_index+5] = gain_y_all; 
+    top_data_buffer[buffer_index+5] = gain_y_all;
+    top_data_buffer[buffer_index+6] = dgx_final_dwctr_all;
+    top_data_buffer[buffer_index+7] = dgy_final_dhctr_all;
+    top_data_buffer[buffer_index+8] = dgx_final_dwdiff_all;
+    top_data_buffer[buffer_index+9] = dgy_final_dhdiff_all;
   }
 }
 
@@ -202,7 +236,7 @@ void inn_ROIWarping_updateOutput(THCState *state,
   long num_rois = rois->size[0];
   long nInputPlane = data->size[1];
   THCudaTensor_resize4d(state, output, num_rois, nInputPlane, H, W);
-  THCudaTensor_resize5d(state, output_buffer, num_rois, nInputPlane, H, W, 6);
+  THCudaTensor_resize5d(state, output_buffer, num_rois, nInputPlane, H, W, 10);
   //THCudaTensor_zero(state, output_buffer);
 
   long count = THCudaTensor_nElement(state, output);
@@ -231,8 +265,7 @@ __global__ void ROIWarpBackwardData(const int nthreads, const Dtype* top_data_bu
     const int pooled_height, const int pooled_width, const int nth_roi, 
     const Dtype* bottom_rois, const Dtype* bottom_delta_rois, 
     const Dtype* top_diff,
-    Dtype* bottom_diff_data, 
-    Dtype* bottom_diff_delta_rois_buffer) {
+    Dtype* bottom_diff_data) {
   CUDA_KERNEL_LOOP(index, nthreads) {
 
     // (n, c, h, w) is an element in the pooled output
@@ -274,14 +307,14 @@ __global__ void ROIWarpBackwardData(const int nthreads, const Dtype* top_data_bu
       Dtype bin_size_pw = static_cast<Dtype>(pooled_width)  / roi_width;  
       Dtype bin_size_ph = static_cast<Dtype>(pooled_height) / roi_height; 
   
-      int pwstart = static_cast<int>(floor(static_cast<Dtype>(-roi_start_w + w) 
-                                          * bin_size_pw)); 
-      int phstart = static_cast<int>(floor(static_cast<Dtype>(-roi_start_h + h)
-                                          * bin_size_ph)); 
-      int pwend = static_cast<int>(ceil(static_cast<Dtype>(-roi_start_w + w + 1) 
-                                       * bin_size_pw));
-      int phend = static_cast<int>(ceil(static_cast<Dtype>(-roi_start_h + h + 1)  
-                                       * bin_size_ph)); 
+      int pwstart = static_cast<int>(floor(static_cast<Dtype>(-roi_start_w + w) * bin_size_pw)); 
+      int phstart = static_cast<int>(floor(static_cast<Dtype>(-roi_start_h + h) * bin_size_ph)); 
+      int pwend = static_cast<int>(ceil(static_cast<Dtype>(-roi_start_w + w+1) * bin_size_pw));
+      int phend = static_cast<int>(ceil(static_cast<Dtype>(-roi_start_h + h+1) * bin_size_ph)); 
+      //Dtype pwstart = static_cast<int>(floor(static_cast<Dtype>(-roi_start_w + w) * bin_size_pw));
+      //Dtype phstart = static_cast<int>(floor(static_cast<Dtype>(-roi_start_h + h) * bin_size_ph));
+      //Dtype pwend = static_cast<int>(ceil(static_cast<Dtype>(-roi_start_w + w+1) * bin_size_pw));
+      //Dtype phend = static_cast<int>(ceil(static_cast<Dtype>(-roi_start_h + h+1) * bin_size_ph));
    
       //bottom_diff_data[index] = pwend; //phend; 
       //bottom_diff_data[index] = pwstart+1; //phend; 
@@ -298,7 +331,7 @@ __global__ void ROIWarpBackwardData(const int nthreads, const Dtype* top_data_bu
       for (int ph = phstart; ph < phend; ++ph) {
         for (int pw = pwstart; pw < pwend; ++pw) {
           int top_index = nth_roi * (channels * pooled_height * pooled_width) + c * (pooled_height * pooled_width) + ph * pooled_width  + pw;
-          int top_buffer_index = nth_roi * (channels * pooled_height * pooled_width * 6) + c * (pooled_height * pooled_width * 6) + ph * (pooled_width * 6) + pw * 6;
+          int top_buffer_index = nth_roi * (channels * pooled_height * pooled_width * 10) + c * (pooled_height * pooled_width * 10) + ph * (pooled_width * 10) + pw * 10;
           wctr       = top_data_buffer[top_buffer_index+0]; 
           wdiff      = top_data_buffer[top_buffer_index+1]; 
           hctr       = top_data_buffer[top_buffer_index+2]; 
@@ -333,7 +366,7 @@ __global__ void ROIWarpBackwardDeltaROI(const int nthreads, const Dtype* top_dat
     const int pooled_height, const int pooled_width, 
     const Dtype* bottom_rois, const Dtype* bottom_delta_rois,
     const Dtype* top_diff,
-    Dtype* bottom_diff_data,
+    const Dtype* bottom_data,
     Dtype* bottom_diff_delta_rois_buffer) {
   CUDA_KERNEL_LOOP(index, nthreads) { 
     // (n, c, ph, pw) is an element in the pooled output
@@ -342,173 +375,210 @@ __global__ void ROIWarpBackwardDeltaROI(const int nthreads, const Dtype* top_dat
     int c = (index / pooled_width / pooled_height) % channels;
     int n = index / pooled_width / pooled_height / channels;
 
-    int buffer_index = n * (channels * pooled_height * pooled_width * 6) + c * (pooled_height * pooled_width * 6) + ph * (pooled_width * 6) + pw * 6;
-    Dtype gain_x_all = top_data_buffer[buffer_index+4];
-    Dtype gain_y_all = top_data_buffer[buffer_index+5];
+    int buffer_index = n * (channels * pooled_height * pooled_width * 10) + c * (pooled_height * pooled_width * 10) + ph * (pooled_width * 10) + pw * 10; 
+    Dtype wctr                 = top_data_buffer[buffer_index+0];
+    Dtype wdiff                = top_data_buffer[buffer_index+1];
+    Dtype hctr                 = top_data_buffer[buffer_index+2];
+    Dtype hdiff                = top_data_buffer[buffer_index+3];
+    Dtype gain_x_all           = top_data_buffer[buffer_index+4];
+    Dtype gain_y_all           = top_data_buffer[buffer_index+5];
+    Dtype dgx_final_dwctr_all  = top_data_buffer[buffer_index+6];
+    Dtype dgy_final_dhctr_all  = top_data_buffer[buffer_index+7];
+    Dtype dgx_final_dwdiff_all = top_data_buffer[buffer_index+8];
+    Dtype dgy_final_dhdiff_all = top_data_buffer[buffer_index+9];
 
-    bottom_rois += n * 5;
-    int roi_batch_ind = (bottom_rois[0] - 1);
+    if (gain_x_all > 1e-10 && gain_y_all > 1e-10) {
 
-    Dtype src_w = bottom_rois[3] - bottom_rois[1] + 1; 
-    Dtype src_h = bottom_rois[4] - bottom_rois[2] + 1;
-    Dtype src_ctr_x = bottom_rois[1] + 0.5*(src_w-1.0); 
-    Dtype src_ctr_y = bottom_rois[2] + 0.5*(src_h-1.0); 
+      bottom_rois += n * 5;
+      int roi_batch_ind = (bottom_rois[0] - 1);
 
-    Dtype dst_ctr_x = bottom_delta_rois[1]; // dx (in fast-rcnn notation) = cx (in here)
-    Dtype dst_ctr_y = bottom_delta_rois[2]; // dy (in fast-rcnn notation) = cy (in here) 
-    Dtype dst_scl_x = bottom_delta_rois[3]; // dw (in fast-rcnn notation) = sx (in here)
-    Dtype dst_scl_y = bottom_delta_rois[4]; // dh (in fast-rcnn notation) = sy (in here) 
+      Dtype src_w = bottom_rois[3] - bottom_rois[1] + 1; 
+      Dtype src_h = bottom_rois[4] - bottom_rois[2] + 1;
+      Dtype src_ctr_x = bottom_rois[1] + 0.5*(src_w-1.0); 
+      Dtype src_ctr_y = bottom_rois[2] + 0.5*(src_h-1.0); 
 
-    Dtype pred_ctr_x = dst_ctr_x * src_w + src_ctr_x; // dpcx / dcx = src_w
-    Dtype pred_ctr_y = dst_ctr_y * src_h + src_ctr_y; // dpcy / dcy = src_h
-    Dtype pred_w = exp(dst_scl_x) * src_w;            // dpw  / dsx = src_w * exp(dsx)  
-    Dtype pred_h = exp(dst_scl_y) * src_h;            // dph  / dsy = src_h * exp(dsy)  
-    
-    Dtype roi_start_w = ( (pred_ctr_x - 0.5*(pred_w-1)) - 1 ) * spatial_scale; // drsw / dpcx = spatial_scale; drsw / dpw = -0.5 * spatial_scale
-    Dtype roi_start_h = ( (pred_ctr_y - 0.5*(pred_h-1)) - 1 ) * spatial_scale; // drsh / dpcy = spatial_scale; drsh / dph = -0.5 * spatial_scale
-    Dtype roi_end_w =   ( (pred_ctr_x + 0.5*(pred_w-1)) - 1 ) * spatial_scale; // drew / dpcx = spatial_scale; drew / dpw =  0.5 * spatial_scale
-    Dtype roi_end_h =   ( (pred_ctr_y + 0.5*(pred_h-1)) - 1 ) * spatial_scale; // dreh / dpcy = spatial_scale; dreh / dph =  0.5 * spatial_scale
-    assert(roi_end_w - roi_start_w >= 0); 
-    assert(roi_end_h - roi_start_h >= 0); 
-    
-    // drsw / dcx = drsw / dpcx * dpcx / dcx = spatial_scale * src_w
-    // drew / dcx = drew / dpcx * dpcx / dcx = spatial_scale * src_w
+      Dtype dst_ctr_x = bottom_delta_rois[1]; // dx (in fast-rcnn notation) = cx (in here)
+      Dtype dst_ctr_y = bottom_delta_rois[2]; // dy (in fast-rcnn notation) = cy (in here) 
+      Dtype dst_scl_x = bottom_delta_rois[3]; // dw (in fast-rcnn notation) = sx (in here)
+      Dtype dst_scl_y = bottom_delta_rois[4]; // dh (in fast-rcnn notation) = sy (in here) 
 
-    // drsh / dcy = drsh / dpcy * dpcy / dcy = spatial_scale * src_h
-    // dreh / dcy = dreh / dpcy * dpcy / dcy = spatial_scale * src_h
+      Dtype pred_ctr_x = dst_ctr_x * src_w + src_ctr_x; // dpcx / dcx = src_w
+      Dtype pred_ctr_y = dst_ctr_y * src_h + src_ctr_y; // dpcy / dcy = src_h
+      Dtype pred_w = exp(dst_scl_x) * src_w;            // dpw  / dsx = src_w * exp(dsx)  
+      Dtype pred_h = exp(dst_scl_y) * src_h;            // dph  / dsy = src_h * exp(dsy)  
+      
+      Dtype roi_start_w = ( (pred_ctr_x - 0.5*(pred_w-1)) - 1 ) * spatial_scale; // drsw / dpcx = spatial_scale; 
+                                                                                 // drsw / dpw = -0.5 * spatial_scale
+      Dtype roi_start_h = ( (pred_ctr_y - 0.5*(pred_h-1)) - 1 ) * spatial_scale; // drsh / dpcy = spatial_scale; 
+                                                                                 // drsh / dph = -0.5 * spatial_scale
+      Dtype roi_end_w =   ( (pred_ctr_x + 0.5*(pred_w-1)) - 1 ) * spatial_scale; // drew / dpcx = spatial_scale; 
+                                                                                 // drew / dpw =  0.5 * spatial_scale
+      Dtype roi_end_h =   ( (pred_ctr_y + 0.5*(pred_h-1)) - 1 ) * spatial_scale; // dreh / dpcy = spatial_scale; 
+                                                                                 // dreh / dph =  0.5 * spatial_scale
+      assert(roi_end_w - roi_start_w >= 0); 
+      assert(roi_end_h - roi_start_h >= 0); 
+      
+      // drsw / dcx = drsw / dpcx * dpcx / dcx = spatial_scale * src_w
+      // drew / dcx = drew / dpcx * dpcx / dcx = spatial_scale * src_w
 
-    // drsw / dsx = drsw / dpw * dpw / dsx = -0.5 * spatial_scale * src_w * exp(dsx) 
-    // drew / dsx = drew / dpw * dpw / dsx =  0.5 * spatial_scale * src_w * exp(dsx)
+      // drsh / dcy = drsh / dpcy * dpcy / dcy = spatial_scale * src_h
+      // dreh / dcy = dreh / dpcy * dpcy / dcy = spatial_scale * src_h
+
+      // drsw / dsx = drsw / dpw * dpw / dsx = -0.5 * spatial_scale * src_w * exp(dsx) 
+      // drew / dsx = drew / dpw * dpw / dsx =  0.5 * spatial_scale * src_w * exp(dsx)
  
-    // drsh / dsy = drsh / dph * dph / dsy = -0.5 * spatial_scale * src_h * exp(dsy)
-    // dreh / dsy = dreh / dph * dph / dsy =  0.5 * spatial_scale * src_h * exp(dsy) 
+      // drsh / dsy = drsh / dph * dph / dsy = -0.5 * spatial_scale * src_h * exp(dsy)
+      // dreh / dsy = dreh / dph * dph / dsy =  0.5 * spatial_scale * src_h * exp(dsy) 
  
-    // Force malformed ROIs to be 1x1
-    Dtype roi_width  = roi_end_w - roi_start_w + 1; // drw / drew =  1 
-                                                    // drw / drsw = -1
-    Dtype roi_height = roi_end_h - roi_start_h + 1; // drh / dreh =  1 
-                                                    // drh / drsh = -1 
-    // drw / dcx = drw / drew * drew / dcx + drw / drsw * drsw / dcx = drew / dcx - drsw / dcx = spatial_scale * src_w - spatial_scale * src_w = 0 
-    // drh / dcy = drh / dreh * dreh / dcy + drh / drsh * drsh / dcy = dreh / dcy - drsh / dcy = spatial_scale * src_h - spatial_scale * src_h = 0 
-    // drw / dsx = drw / drew * drew / dsx + drw / drsw * drsw / dsx = drew / dsx - drsw / dsx = 0.5 * spatial_scale * src_w * exp(dsx) - (-0.5 * spatial_scale * src_w * exp(dsx)) = spatial_scale * src_w * exp(dsx) 
-    // drh / dsy = drh / dreh * dreh / dsy + drh / drsh * drsh / dsy = dreh / dsy - drsh / dsy = 0.5 * spatial_scale * src_h * exp(dsy) - (-0.5 * spatial_scale * src_h * exp(dsy)) = spatial_scale * src_h * exp(dsy) 
+      // Force malformed ROIs to be 1x1
+      Dtype roi_width  = roi_end_w - roi_start_w + 1; // drw / drew =  1 
+                                                      // drw / drsw = -1
+      Dtype roi_height = roi_end_h - roi_start_h + 1; // drh / dreh =  1 
+                                                      // drh / drsh = -1 
+      // drw / dcx = drw / drew * drew / dcx + drw / drsw * drsw / dcx = drew / dcx - drsw / dcx = spatial_scale * src_w - spatial_scale * src_w = 0 
+      // drh / dcy = drh / dreh * dreh / dcy + drh / drsh * drsh / dcy = dreh / dcy - drsh / dcy = spatial_scale * src_h - spatial_scale * src_h = 0 
+      // drw / dsx = drw / drew * drew / dsx + drw / drsw * drsw / dsx = drew / dsx - drsw / dsx = 0.5 * spatial_scale * src_w * exp(dsx) - (-0.5 * spatial_scale * src_w * exp(dsx)) = spatial_scale * src_w * exp(dsx) 
+      // drh / dsy = drh / dreh * dreh / dsy + drh / drsh * drsh / dsy = dreh / dsy - drsh / dsy = 0.5 * spatial_scale * src_h * exp(dsy) - (-0.5 * spatial_scale * src_h * exp(dsy)) = spatial_scale * src_h * exp(dsy) 
 
-    Dtype bin_size_w = roi_width  / static_cast<Dtype>(pooled_width);  // dbw / drw  =  1 / pooled_width
-    Dtype bin_size_h = roi_height / static_cast<Dtype>(pooled_height); // dbh / drh  =  1 / pooled_height
-    // dbw / dcx = dbw / drw * drw / dcx = 0 
-    // dbh / dcy = dbh / drh * drh / dcy = 0
-    // dbw / dsx = dbw / drw * drw / dsx = 1 / pooled_width * spatial_scale * src_w * exp(dsx) 
-    // dbh / dsy = dbh / drh * drh / dsy = 1 / pooled_height * spatial_scale * src_h * exp(dsy) 
+      Dtype bin_size_w = roi_width  / static_cast<Dtype>(pooled_width);  // dbw / drw  =  1 / pooled_width
+      Dtype bin_size_h = roi_height / static_cast<Dtype>(pooled_height); // dbh / drh  =  1 / pooled_height
+      // dbw / dcx = dbw / drw * drw / dcx = 0 
+      // dbh / dcy = dbh / drh * drh / dcy = 0
+      // dbw / dsx = dbw / drw * drw / dsx = 1 / pooled_width  * spatial_scale * src_w * exp(dsx) 
+      // dbh / dsy = dbh / drh * drh / dsy = 1 / pooled_height * spatial_scale * src_h * exp(dsy) 
 
-    int wstart = static_cast<int>(floor(static_cast<Dtype>(pw)        // dws / dbw = pw 
-                                        * bin_size_w)) + roi_start_w; // dws / drsw = 1
-    int hstart = static_cast<int>(floor(static_cast<Dtype>(ph)        // dhs / dbh = ph 
-                                        * bin_size_h)) + roi_start_h; // dhs / drsh = 1 
-    int wend = static_cast<int>(ceil(static_cast<Dtype>(pw + 1)       // dwe / dbw = (pw+1)
-                                     * bin_size_w)) + roi_start_w;    // dwe / drsw = 1 
-    int hend = static_cast<int>(ceil(static_cast<Dtype>(ph + 1)       // dhe / dbh = (ph+1)
-                                     * bin_size_h)) + roi_start_h;    // dhe / drsh = 1 
-    // dws / dcx = dws / dbw * dbw / dcx + dws / drsw * drsw / dcx = pw * 0 + 1 * spatial_scale * src_w     = spatial_scale * src_w
-    // dwe / dcx = dwe / dbw * dbw / dcx + dwe / drsw * drsw / dcx = (pw+1) * 0 + 1 * spatial_scale * src_w = spatial_scale * src_w
+      //int wstart = static_cast<int>(floor(static_cast<Dtype>(pw)        // dws / dbw = pw 
+      //                                    * bin_size_w + roi_start_w)); // dws / drsw = 1
+      //int hstart = static_cast<int>(floor(static_cast<Dtype>(ph)        // dhs / dbh = ph 
+      //                                    * bin_size_h + roi_start_h)); // dhs / drsh = 1 
+      //int wend = static_cast<int>(ceil(static_cast<Dtype>(pw + 1)       // dwe / dbw = (pw+1)
+      //                                 * bin_size_w + roi_start_w));    // dwe / drsw = 1 
+      //int hend = static_cast<int>(ceil(static_cast<Dtype>(ph + 1)       // dhe / dbh = (ph+1)
+      //                                 * bin_size_h + roi_start_h));    // dhe / drsh = 1 
+      Dtype wstart_ = static_cast<Dtype>(pw) * bin_size_w + roi_start_w; // dws / dbw = pw
+                                                                         // dws / drsw = 1
+      Dtype hstart_ = static_cast<Dtype>(ph) * bin_size_h + roi_start_h; // dhs / dbh = ph
+                                                                         // dhs / drsh = 1
+      Dtype wend_ = static_cast<Dtype>(pw+1) * bin_size_w + roi_start_w; // dwe / dbw = (pw+1)
+                                                                         // dwe / drsw = 1
+      Dtype hend_ = static_cast<Dtype>(ph+1) * bin_size_h + roi_start_h; // dhe / dbh = (ph+1)
+                                                                         // dhe / drsh = 1
+      int wstart = static_cast<int>(floor(wstart_));
+      int hstart = static_cast<int>(floor(hstart_));
+      int wend   = static_cast<int>( ceil(wend_));
+      int hend   = static_cast<int>( ceil(hend_));
 
-    // dws / dsx = dws / dbw * dbw / dsx + dws / drsw * drsw / dsx = pw * 1 / pooled_width * spatial_scale * src_w * exp(dsx) + 1 * (-0.5) * spatial_scale * src_w * exp(dsx) = ( pw / pooled_width - 0.5 ) * spatial_scale * src_w * exp(dsx) 
-    // dwe / dsx = dwe / dbw * dbw / dsx + dwe / drsw * drsw / dsx = (pw+1) * 1 / pooled_width * spatial_scale * src_w * exp(dsx) + 1 * 0.5 * spatial_scale * src_w * exp(dsx) = ( (pw+1)/pooled_width + 0.5 ) * spatial_scale * src_w * exp(dsx)
+      // dws / dcx = dws / dbw * dbw / dcx + dws / drsw * drsw / dcx =     pw * 0 + 1 * spatial_scale * src_w = spatial_scale * src_w
+      // dwe / dcx = dwe / dbw * dbw / dcx + dwe / drsw * drsw / dcx = (pw+1) * 0 + 1 * spatial_scale * src_w = spatial_scale * src_w
 
-    // dhs / dcy = dhs / dbh * dbh / dcy + dhs / drsh * drsh / dcy = ph * 0 + 1 * spatial_scale * src_h     = spatial_scale * src_w
-    // dhe / dcy = dhe / dbh * dbh / dcy + dhe / drsh * drsh / dcy = (ph+1) * 0 + 1 * spatial_scale * src_h = spatial_scale * src_h
+      // dws / dsx = dws / dbw * dbw / dsx + dws / drsw * drsw / dsx =     pw * 1 / pooled_width * spatial_scale * src_w * exp(dsx) + 1 * (-0.5) * spatial_scale * src_w * exp(dsx) = (    pw / pooled_width - 0.5 ) * spatial_scale * src_w * exp(dsx) 
+      // dwe / dsx = dwe / dbw * dbw / dsx + dwe / drsw * drsw / dsx = (pw+1) * 1 / pooled_width * spatial_scale * src_w * exp(dsx) + 1 *   0.5  * spatial_scale * src_w * exp(dsx) = ( (pw+1)/ pooled_width + 0.5 ) * spatial_scale * src_w * exp(dsx)
 
-    // dhs / dsy = dhs / dbh * dbh / dsy + dhs / drsh * drsh / dsy = ph * 1 / pooled_height * spatial_scale * src_h * exp(dsy) + 1 * (-0.5) * spatial_scale * src_h * exp(dsy) = (ph / pooled_height - 0.5) * spatial_scale * src_h * exp(dsy) 
-    // dhe / dsy = dhe / dbh * dbh / dsy + dhe / drsh * drsh / dsy = (ph+1) * 1 / pooled_height * spatial_scale * src_h * exp(dsy) + 1 * 0.5 * spatial_scale * src_h * exp(dsy) = ((ph+1)/pooled_height + 0.5) * spatial_scale * src_h * exp(dsy)  
+      // dhs / dcy = dhs / dbh * dbh / dcy + dhs / drsh * drsh / dcy =     ph * 0 + 1 * spatial_scale * src_h = spatial_scale * src_w
+      // dhe / dcy = dhe / dbh * dbh / dcy + dhe / drsh * drsh / dcy = (ph+1) * 0 + 1 * spatial_scale * src_h = spatial_scale * src_h
 
-    Dtype wctr = static_cast<Dtype>(wend-1+wstart) * 0.5;      // dwctr / dwe = 0.5; dwctr / dws = 0.5 
-    Dtype hctr = static_cast<Dtype>(hend-1+hstart) * 0.5;      // dhctr / dhe = 0.5; dhctr / dhs = 0.5 
-    Dtype wdiff = max(static_cast<Dtype>(wend-1-wstart), 1.);  // dwdiff / dwe = (wend-wstart) >= 1 ? 1 : 0; dwdiff / dws = (wend-wstart) >= 1 ? -1 : 0; 
-    Dtype hdiff = max(static_cast<Dtype>(hend-1-hstart), 1.);  // dhdiff / dhe = (hend-hstart) >= 1 ? 1 : 0; dhdiff / dhs = (hend-hstart) >= 1 ? -1 : 0;
-    Dtype wdiff_mask = (wend-wstart) >= 1 ? 1 : 0;
-    Dtype hdiff_mask = (wend-wstart) >= 1 ? 1 : 0;
-    // dwctr / dcx = dwctr / dwe * dwe / dcx + dwctr / dws * dws / dcx = 0.5 * spatial_scale * src_w + 0.5 * spatial_scale * src_w = spatial_scale * src_w 
-    // dwdiff / dcx = dwdiff / dwe * dwe / dcx + dwdiff / dws * dws / dcx = 1 * spatial_scale * src_w -  1  * spatial_scale * src_w = 0 
+      // dhs / dsy = dhs / dbh * dbh / dsy + dhs / drsh * drsh / dsy =     ph * 1 / pooled_height * spatial_scale * src_h * exp(dsy) + 1 * (-0.5) * spatial_scale * src_h * exp(dsy) = (   ph / pooled_height - 0.5) * spatial_scale * src_h * exp(dsy) 
+      // dhe / dsy = dhe / dbh * dbh / dsy + dhe / drsh * drsh / dsy = (ph+1) * 1 / pooled_height * spatial_scale * src_h * exp(dsy) + 1 *   0.5  * spatial_scale * src_h * exp(dsy) = ((ph+1)/ pooled_height + 0.5) * spatial_scale * src_h * exp(dsy)  
+      /*
+      Dtype wctr =  (wend_ + wstart_) * 0.5; // dwctr / dwe = 0.5; dwctr / dws = 0.5
+      Dtype hctr =  (hend_ + hstart_) * 0.5; // dhctr / dhe = 0.5; dhctr / dhs = 0.5
+      Dtype wdiff = (wend_ - wstart_) + 1;   // dwdiff / dwe = 1; dwdiff / dws = -1
+      Dtype hdiff = (hend_ - hstart_) + 1;   // dhdiff / dhe = 1; dhdiff / dhs = -1
 
-    // dhctr / dcy = spatial_scale * src_h
-    // dhdiff / dcy = 0
+      // dwctr  / dcx = dwctr  / dwe * dwe / dcx + dwctr  / dws * dws / dcx = 0.5 * spatial_scale * src_w + 0.5 * spatial_scale * src_w = spatial_scale * src_w 
+      // dwdiff / dcx = dwdiff / dwe * dwe / dcx + dwdiff / dws * dws / dcx =   1 * spatial_scale * src_w -  1  * spatial_scale * src_w = 0 
+
+      // dhctr  / dcy = spatial_scale * src_h
+      // dhdiff / dcy = 0
   
-    // dwctr / dsx = dwctr / dwe * dwe / dsx + dwctr / dws * dws / dsx = 0.5 * ((pw+1)/pooled_width + 0.5) * spatial_scale * src_w * exp(dsx) + 0.5 * (pw/pooled_width - 0.5) * spatial_scale * src_w * exp(dsx) 
-    //                                                                 = 0.5 * (2*pw+1)/pooled_width * spatial_scale * src_w * exp(dsx)
-    //                                                                 = (pw + 0.5) / pooled_width * spatial_scale * src_w * exp(dsx) 
-    // dwdiff / dsx = dwdiff / dwe * dwe / dsx + dwdiff / dws * dws / dsx = 1 * ((pw+1)/pooled_width + 0.5) * spatial_scale * src_w * exp(dsx) + (-1) * (pw/pooled_width - 0.5) * spatial_scale * src_w * exp(dsx)
-    //                                                                    = (wend-wstart) >= 1 ? (1 / pooled_width + 1) * spatial_scale * src_w * exp(dsx) : 0 
-    // dhctr / dsy  = (ph + 0.5) / pooled_height * spatial_scale * src_h * exp(dsy)
-    // dhdiff / dsy = (hend-hstart) >= 1 ? (1 / pooled_height + 1) * spatial_scale * src_h * exp(dsy) : 0
-  
-    // if w >= wctr  
-    // dgx / dcx = dgx / dwctr * dwctr / dcx + dgx / dwdiff * dwdiff / dcx = 1 / wdiff * spatial_scale * src_w + (( w - wctr ) / (wdiff)^2 ) * 0
-    //                                                                     = 1 / wdiff * spatial_scale * src_w  
-    // dgx / dsx = dgx / dwctr * dwctr / dsx + dgx / dwdiff * dwdiff / dsx = 1 / wdiff * (pw + 0.5) / pooled_width * spatial_scale * src_w * exp(dsx) + ((wend-wstart) >= 1 ? 1 : 0) * (( w - wctr ) / (wdiff)^2 ) * (1 / pooled_width + 1) * spatial_scale * src_w * exp(dsx)
-    //                                                                     = ((pw * 0.5) / (pooled_width * wdiff) + ((wend-wstart) >= 1 ? 1 : 0) * (( w - wctr ) / (wdiff)^2 ) * (1 + pooled_width) / pooled_width ) * spatial_scale * src_w * exp(dsx) 
-    // dgy / dcy = dgy / dhctr * dhctr / dcy + dgy / dhdiff * dhdiff / dcy = 1 / hdiff * spatial_scale * src_h
-    // dgy / dsy = dgy / dhctr * dhctr / dsy + dgy / dhdiff * dhdiff / dsy = ((ph * 0.5) / (pooled_height * hdiff) + ((hend-hstart) >= 1 ? 1 : 0) * (( h - hctr ) / (hdiff)^2 ) * (1 + pooled_height) / pooled_height ) * spatial_scale * src_h * exp(dsy) 
-  
-  
-    // Add roi offsets and clip to input boundaries
-    hstart = min(max(hstart, 0), height);         //  
-    hend = min(max(hend, 0), height);
-    wstart = min(max(wstart, 0), width);
-    wend = min(max(wend, 0), width);
-    //bool is_empty = (hend <= hstart) || (wend <= wstart);
+      // dwctr  / dsx = dwctr  / dwe * dwe / dsx + dwctr  / dws * dws / dsx = 0.5 * ((pw+1)/pooled_width + 0.5) * spatial_scale * src_w * exp(dsx) + 0.5 * (pw/pooled_width - 0.5) * spatial_scale * src_w * exp(dsx) 
+      //                                                                    = 0.5 * (2*pw+1)/pooled_width * spatial_scale * src_w * exp(dsx)
+      //                                                                    = (pw + 0.5) / pooled_width * spatial_scale * src_w * exp(dsx) 
+      // dwdiff / dsx = dwdiff / dwe * dwe / dsx + dwdiff / dws * dws / dsx = 1 * ((pw+1)/pooled_width + 0.5) * spatial_scale * src_w * exp(dsx) + (-1) * (pw/pooled_width - 0.5) * spatial_scale * src_w * exp(dsx)
+      //                                                                    = (1 / pooled_width + 1) * spatial_scale * src_w * exp(dsx)  
+      // dhctr  / dsy = (ph + 0.5) / pooled_height * spatial_scale * src_h * exp(dsy)
+      // dhdiff / dsy = (1 / pooled_height + 1) * spatial_scale * src_h * exp(dsy) 
 
-    // Define an empty pooling region to be zero
-    Dtype val_cx = 0, val_cy = 0, val_sx = 0, val_sy = 0; 
-    Dtype gain = 0, gain_x = 0, gain_y = 0;  
-    Dtype pw_ = static_cast<Dtype>(pw); 
-    Dtype ph_ = static_cast<Dtype>(ph);
-    Dtype pooled_width_  = static_cast<Dtype>(pooled_width); 
-    Dtype pooled_height_ = static_cast<Dtype>(pooled_height);
-    Dtype src_w_ = static_cast<Dtype>(src_w); 
-    Dtype src_h_ = static_cast<Dtype>(src_h);  
-    Dtype buffer_sx = 0, buffer_sy = 0;  
-    //bottom_data += (roi_batch_ind * channels + c) * height * width;
-    bottom_diff_data += (roi_batch_ind * channels + c) * height * width;
-    for (int h = hstart; h < hend; ++h) {
-      for (int w = wstart; w < wend; ++w) {
-        int bottom_index = h * width + w;
-        Dtype w_ = w, h_ = h;  
-        gain_x = (wdiff - abs((w_ - wctr))) / wdiff;   // dgx / dwdiff =   (w-wctr) / (wdiff)^2 ( if w >= wctr ) 
-                                                       // dgx / dwdiff = - (w-wctr) / (wdiff)^2 ( else )
-                                                       // dgx / dwctr  =   1 / wdiff ( if w >= wctr )  
-                                                       // dgx / dwctr  = - 1 / wdiff ( else )  
-        gain_y = (hdiff - abs((h_ - hctr))) / hdiff;   // dgy / dhdiff =   (h-hctr) / (hdiff)^2 ( if h >= hctr ) 
-                                                                                              // dgy / dhdiff = - (h-hctr) / (hdiff)^2 ( else )
-                                                                                              // dgy / dhctr  =   1 / hdiff ( if h >= hctr )
-                                                                                              // dgy / dhdiff = - 1 / hdiff ( else )
-        if (gain_x_all > 1e-10)
-          gain_x = gain_x / gain_x_all;
-        if (gain_y_all > 1e-10)
-          gain_y = gain_y / gain_y_all;
 
-        // buffer 
-        Dtype coeff_x = w >= wctr ? 1 : -1; coeff_x = coeff_x * gain_y * spatial_scale * src_w_ * top_diff[index]; 
-        Dtype coeff_y = h >= hctr ? 1 : -1; coeff_y = coeff_y * gain_x * spatial_scale * src_h_ * top_diff[index]; 
-        val_cx = val_cx + coeff_x / wdiff;  
-        val_cy = val_cy + coeff_y / hdiff;
-        //val_sx = val_sx + coeff_x * (pw_ * 0.5 * wdiff + (w_ - wctr) * (1 + pooled_width_ )) / (wdiff*wdiff) / pooled_width_  * exp(dst_scl_x);
-        //val_sy = val_sy + coeff_y * (ph_ * 0.5 * hdiff + (h_ - hctr) * (1 + pooled_height_)) / (hdiff*hdiff) / pooled_height_ * exp(dst_scl_y);
-        buffer_sx = 0; buffer_sx = coeff_x * (pw_ * 0.5 * wdiff + wdiff_mask * (w_ - wctr) * (1 + pooled_width_ )); buffer_sx = buffer_sx / (wdiff*wdiff); buffer_sx = buffer_sx / pooled_width_  * exp(dst_scl_x);  
-        val_sx = val_sx + buffer_sx; 
-        buffer_sy = 0; buffer_sy = coeff_y * (ph_ * 0.5 * hdiff + hdiff_mask * (h_ - hctr) * (1 + pooled_height_)); buffer_sy = buffer_sy / (hdiff*hdiff); buffer_sy = buffer_sy / pooled_height_ * exp(dst_scl_y);
-        val_sy = val_sy + buffer_sy; 
-        //(dgain/ddelta_rois) * top_diff[index]; // dgain/ddeleta_rois = dgain/dgain_x * dgain_x/ddelta_rois + dgain/dgain_y * dgain_y/ddelta_rois
-                                                 //                    =        gain_y * dgain_x/ddelta_rois +        gain_x * dgain_y/ddelta_rois
+      // dgx / dwctr  = (w >= wctr ? 1 : -1) * 1 / wdiff 
+      // dgx / dwdiff = (w >= wctr ? 1 : -1) * (w-wctr) / (wdiff)^2
+      // dgy / dhctr  = (h >= hctr ? 1 : -1) * 1 / hdiff 
+      // dgy / dhdiff = (h >= hctr ? 1 : -1) * (h-hctr) / (hdiff)^2 
+ 
+      // gx_final = gx / gx_all 
+      // dgx_final / dwctr  = ( dgx/dwctr  * gx_all - gx * dgx_all/dwctr  ) / (gx_all)^2 = ( (w >= wctr ? 1 : -1) * 1        /  wdiff    * gx_all - gx * sum_for_w{ (w >= wctr ? 1 : -1) * 1        / wdiff   } ) / gx_all^2
+      // dgx_final / dwdiff = ( dgx/dwdiff * gx_all - gx * dgx_all/dwdiff ) / (gx_all)^2 = ( (w >= wctr ? 1 : -1) * (w-wctr) / (wdiff)^2 * gx_all - gx * sum_for_w{ (w >= wctr ? 1 : -1) * (w-wctr) / wdiff^2 } ) / gx_all^2
+      // gy_final = gy / gy_all
+      // dgy_final / dhctr  = ...
+      // dgy_final / dhdiff = ...
+
+      // dgx_final / dcx = dgx_final / dwctr * dwctr / dcx + dgx_final / dwdiff * dwdiff / dcx
+      //                 = ( (w >= wctr ? 1 : -1) * 1 / wdiff * gx_all - gx * sum_for_w{ (w >= wctr ? 1 : -1) * 1 / wdiff } ) / gx_all^2 * spatial_scale * src_w + (...) * 0
+      //                 = ( (w >= wctr ? 1 : -1) * 1 / wdiff * gx_all - gx * sum_for_w{ (w >= wctr ? 1 : -1) * 1 / wdiff } ) / gx_all^2 * spatial_scale * src_w 
+      // dgy_final / dcy = ( (h >= hctr ? 1 : -1) * 1 / hdiff * gy_all - gy * sum_for_h{ (h >= hctr ? 1 : -1) * 1 / hdiff } ) / gx_all^2 * spatial_scale * src_h
+      // dgx_final / dsx = ( (w >= wctr ? 1 : -1) * 1 / wdiff * gx_all            - gx * sum_for_w{ (w >= wctr ? 1 : -1) * 1 / wdiff }          ) / gx_all^2 * (pw + 0.5) / pooled_width  * spatial_scale * src_w * exp(dsx) + 
+      //                   ( (w >= wctr ? 1 : -1) * (w-wctr) / (wdiff)^2 * gx_all - gx * sum_for_w{ (w >= wctr ? 1 : -1) * (w-wctr) / wdiff^2 } ) / gx_all^2 * (1 / pooled_width + 1)     * spatial_scale * src_w * exp(dsx) 
+      // dgy_final / dsy = ( (h >= hctr ? 1 : -1) * 1 / hdiff * gy_all            - gy * sum_for_h{ (h >= hctr ? 1 : -1) * 1 / hdiff }          ) / gy_all^2 * (ph + 0.5) / pooled_height * spatial_scale * src_h * exp(dsy) + 
+      //                   ( (h >= hctr ? 1 : -1) * (h-hctr) / (hdiff)^2 * gy_all - gy * sum_for_h{ (h >= hctr ? 1 : -1) * (h-hctr) / hdiff^2 } ) / gy_all^2 * (1 / pooled_height + 1)    * spatial_scale * src_h * exp(dsy) 
+
+      // dg / dcx = dg / dgx_final * dgx_final / dcx + dg / dgy_final * dgy_final / dcx
+      //          =   gy_final     * dgx_final / dcx +   gx_final     * 0
+      //          =   gy_final     * dgx_final / dcx
+      // ... 
+      */ 
+      // Add roi offsets and clip to input boundaries
+      hstart = min(max(hstart, 0), height);         //  
+      hend = min(max(hend, 0), height);
+      wstart = min(max(wstart, 0), width);
+      wend = min(max(wend, 0), width);
+      //bool is_empty = (hend <= hstart) || (wend <= wstart);
+
+      // Define an empty pooling region to be zero
+      Dtype val_cx = 0, val_cy = 0, val_sx = 0, val_sy = 0; 
+      Dtype gain_x = 0, gain_y = 0;  
+      Dtype pw_ = static_cast<Dtype>(pw); 
+      Dtype ph_ = static_cast<Dtype>(ph);
+      Dtype pooled_width_  = static_cast<Dtype>(pooled_width); 
+      Dtype pooled_height_ = static_cast<Dtype>(pooled_height);
+      //Dtype buffer_sx = 0, buffer_sy = 0;  
+      bottom_data += (roi_batch_ind * channels + c) * height * width;
+      Dtype w_mask = 0, h_mask = 0, coeff_x = 0, coeff_y = 0; 
+      for (int h = hstart; h < hend; ++h) {
+        for (int w = wstart; w < wend; ++w) {
+          int bottom_index = h * width + w;
+          Dtype w_ = w, h_ = h;  
+          gain_x = (wdiff - abs((w_ - wctr))) / wdiff;   
+          gain_y = (hdiff - abs((h_ - hctr))) / hdiff;   
+
+          w_mask = w_ >= wctr ? 1 : -1;   
+          h_mask = h_ >= hctr ? 1 : -1;  
+
+          //val_cx = val_cx + gain_y * (w_mask / wdiff * gain_x_all - gain_x * dgx_final_dwctr_all                     ) / (gain_x_all*gain_x_all)                            * spatial_scale * src_w * top_diff[index]; 
+          //val_cy = val_cy + gain_x * (h_mask / hdiff * gain_y_all - gain_y * dgy_final_dhctr_all                     ) / (gain_y_all*gain_y_all)                            * spatial_scale * src_h * top_diff[index];
+          //val_sx = val_sx + gain_y *((w_mask * (w_-wctr) / (wdiff*wdiff) * gain_x_all - gain_x * dgx_final_dwdiff_all) / (gain_x_all*gain_x_all) * (pw_+0.5) / pooled_width * spatial_scale * src_w * exp(dsx) + 
+          //                           (w_mask / wdiff * gain_x_all - gain_x * dgx_final_dwctr_all                     ) / (gain_x_all*gain_x_all) * (1 / pooled_width + 1)   * spatial_scale * src_w * exp(dsx) ) * top_diff[index]; 
+          //val_sy = val_sy + gain_x *((h_mask * (h_-hctr) / (hdiff*hdiff) * gain_y_all - gain_y * dgy_final_dhdiff_all) / (gain_y_all*gain_y_all) * (ph_+0.5) / pooled_hidth * spatial_scale * src_h * eyp(dsy) +
+          //                           (h_mask / hdiff * gain_y_all - gain_y * dgy_final_dhctr_all                     ) / (gain_y_all*gain_y_all) * (1 / pooled_hidth + 1)   * spatial_scale * src_h * eyp(dsy) ) * top_diff[index];
+
+          //if (gain_x > 1e-10 && gain_y > 1e-10) {
+            coeff_x = bottom_data[bottom_index] * gain_y / gain_y_all * spatial_scale * src_w * top_diff[index] / (gain_x_all*gain_x_all);
+            val_cx = val_cx +  (w_mask / wdiff * gain_x_all - gain_x * dgx_final_dwctr_all                     )                                         * coeff_x;
+            val_sx = val_sx + ((w_mask / wdiff * gain_x_all - gain_x * dgx_final_dwctr_all                     ) * (pw_+0.5) +
+                               (w_mask * (w_-wctr) / (wdiff*wdiff) * gain_x_all - gain_x * dgx_final_dwdiff_all) * (1 + pooled_width_) ) / pooled_width_ * coeff_x * exp(dst_scl_x);
+          
+            coeff_y = bottom_data[bottom_index] * gain_x / gain_x_all * spatial_scale * src_h * top_diff[index] / (gain_y_all*gain_y_all);
+            val_cy = val_cy +  (h_mask / hdiff * gain_y_all - gain_y * dgy_final_dhctr_all                     )                                           * coeff_y;
+            val_sy = val_sy + ((h_mask / hdiff * gain_y_all - gain_y * dgy_final_dhctr_all                     ) * (ph_+0.5) + 
+                               (h_mask * (h_-hctr) / (hdiff*hdiff) * gain_y_all - gain_y * dgy_final_dhdiff_all) * (1 + pooled_height_) ) / pooled_height_ * coeff_y * exp(dst_scl_y);
+          //}
+        }
       }
+      /*int*/ buffer_index = n * (channels * pooled_height * pooled_width * 4) + c * (pooled_height * pooled_width * 4) + ph * (pooled_width * 4) + pw * 4; 
+      bottom_diff_delta_rois_buffer[buffer_index+0] = val_cx; 
+      bottom_diff_delta_rois_buffer[buffer_index+1] = val_cy; 
+      bottom_diff_delta_rois_buffer[buffer_index+2] = val_sx;
+      bottom_diff_delta_rois_buffer[buffer_index+3] = val_sy;
     }
-    /*int*/ buffer_index = n * (channels * pooled_height * pooled_width * 4) + c * (pooled_height * pooled_width * 4) + ph * (pooled_width * 4) + pw * 4; 
-    bottom_diff_delta_rois_buffer[buffer_index+0] = val_cx; 
-    bottom_diff_delta_rois_buffer[buffer_index+1] = val_cy; 
-    bottom_diff_delta_rois_buffer[buffer_index+2] = val_sx;
-    bottom_diff_delta_rois_buffer[buffer_index+3] = val_sy;
-    //bottom_diff_delta_rois_cx[index] = val_cx;
-    //bottom_diff_delta_rois_cy[index] = val_cy;
-    //bottom_diff_delta_rois_sx[index] = val_sx;
-    //bottom_diff_delta_rois_sy[index] = val_sy;
   }
 }
 
@@ -551,8 +621,7 @@ void inn_ROIWarping_updateGradInputAtomic(THCState *state,
         THCudaTensor_data(state, rois),
         THCudaTensor_data(state, delta_rois),
         THCudaTensor_data(state, gradOutput), 
-        THCudaTensor_data(state, gradInput_data),
-        THCudaTensor_data(state, gradInput_delta_rois_buffer)
+        THCudaTensor_data(state, gradInput_data)
         );
   }
 
@@ -565,7 +634,7 @@ void inn_ROIWarping_updateGradInputAtomic(THCState *state,
       THCudaTensor_data(state, rois),
       THCudaTensor_data(state, delta_rois),
       THCudaTensor_data(state, gradOutput),
-      THCudaTensor_data(state, gradInput_data),
+      THCudaTensor_data(state, data),
       THCudaTensor_data(state, gradInput_delta_rois_buffer)
       );
 

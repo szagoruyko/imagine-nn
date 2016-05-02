@@ -37,19 +37,21 @@ local input_image = torch.Tensor(n_images, sz[1], sz[2], sz[3]):copy(torch.linsp
 
 print(input_image)
 
-local n_rois = 2
+local n_rois = 1
+--local n_rois = 2
 local rois=torch.Tensor(n_rois,5)
 for i=1,n_rois do
   idx=torch.randperm(n_images)[1]
   y=torch.randperm(sz[3])[{{1,2}}]:sort()
   x=torch.randperm(sz[2])[{{1,2}}]:sort()
-  --rois[{i,{}}] = torch.Tensor({idx,x[1],y[1],x[2],y[2]})
+  rois[{i,{}}] = torch.Tensor({idx,x[1],y[1],x[2],y[2]})
   --rois[{i,{}}] = torch.Tensor({idx,1,1,sz[3],sz[2]})
   --rois[{i,{}}] = torch.Tensor({idx,1,1,H/2,W/2})
   --rois[{i,{}}] = torch.Tensor({idx,1,1,1,1})
 end
-rois[{1,{}}] = torch.Tensor({1,2,2,3,5})
-rois[{2,{}}] = torch.Tensor({1,1,5,3,6})
+--rois[{1,{}}] = torch.Tensor({1,2,2,3,5})
+--rois[{2,{}}] = torch.Tensor({1,1,5,3,6})
+--rois[{1,{}}] = torch.Tensor({1,1,5,3,6})
 
 print(rois)
 
@@ -70,9 +72,9 @@ print('-------------------------')
 local delta_rois = rois:clone()
 --delta_rois[{{}, {2,5}}] = 0 
 --delta_rois[{{}, {2,5}}] = torch.ones(n_rois, 4) * 0.1 
---delta_rois[{{}, {2,5}}] = torch.rand(n_rois, 4)
+delta_rois[{{}, {2,5}}] = torch.rand(n_rois, 4)
 --delta_rois[{{}, {2,5}}] = torch.Tensor{0.7887, 0.4103, 0.7086, 0.7714}:reshape(1,4)
-delta_rois[{{}, {2,5}}] = torch.Tensor{0.4694, 0.1311, 0.8265, 0.1495, 0.9336, 0.4434, 0.5211, 0.1230}:reshape(2,4)
+--delta_rois[{{}, {2,5}}] = torch.Tensor{0.4694, 0.1311, 0.8265, 0.1495, 0.9336, 0.4434, 0.5211, 0.1230}:reshape(2,4)
 --delta_rois[{{}, {2,5}}] = torch.Tensor{0.4694, 0.1311, 0.8265, 0.1495}:reshape(1,4)
 --delta_rois[{{}, {2,5}}] = torch.Tensor{0.9336, 0.4434, 0.5211, 0.1230}:reshape(1,4)
 print(delta_rois)
@@ -89,8 +91,9 @@ local gradInput = model:backward({input_image:cuda(), rois:cuda(), delta_rois:cu
 --local gradInput = model:backward({input_image:cuda(), rois:cuda(), delta_rois:cuda()}, output)
 print(gradInput[1])
 print(gradInput[1]:sum())
---print(gradInput[2])
+print(gradInput[2])
 print(gradInput[3])
+print(gradInput[3]:sum())
 
 --[[
 local jac = nn.Jacobian
