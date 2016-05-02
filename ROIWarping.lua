@@ -31,12 +31,15 @@ function ROIWarping:updateOutput(input)
     --delta_rois[{{},{2,5}}] = 0
     delta_rois = self.delta_rois
   end
-  
+ 
+  self.output_buffer = self.output_buffer or data.new()
+ 
   --C.inn_ROIWarping_updateOutput(cutorch.getState(),
   --  self.output:cdata(), self.indices:cdata(), data:cdata(), rois:cdata(), delta_rois:cdata(), 
   --  self.W, self.H, self.spatial_scale)
   C.inn_ROIWarping_updateOutput(cutorch.getState(),
-    self.output:cdata(), data:cdata(), rois:cdata(), delta_rois:cdata(), 
+    self.output:cdata(), self.output_buffer:cdata(),
+    data:cdata(), rois:cdata(), delta_rois:cdata(),
     self.W, self.H, self.spatial_scale)
 
   return self.output
@@ -66,14 +69,12 @@ function ROIWarping:updateGradInput(input,gradOutput)
     self.gradInput_delta_rois_buffer = self.gradInput_delta_rois_buffer or self.output.new()
   --end 
 
-  --C.inn_ROIWarping_updateGradInputAtomic(cutorch.getState(),
-  --  self.gradInput_boxes:cdata(), self.indices:cdata(), data:cdata(),
-  --  gradOutput:cdata(), rois:cdata(), self.W, self.H, self.spatial_scale)
   C.inn_ROIWarping_updateGradInputAtomic(cutorch.getState(),
-    self.gradInput_boxes:cdata(), data:cdata(),
+    self.gradInput_boxes:cdata(), data:cdata(), 
     self.gradInput_delta_rois:cdata(), delta_rois:cdata(),
     self.gradInput_delta_rois_buffer:cdata(),  
-    gradOutput:cdata(), rois:cdata(), self.W, self.H, self.spatial_scale)
+    gradOutput:cdata(), self.output_buffer:cdata(), 
+    rois:cdata(), self.W, self.H, self.spatial_scale)
 
   --print(self.gradInput_delta_rois_buffer[{1, 1, 1, 1, {}}])
 

@@ -169,7 +169,7 @@ function testJacobianWithRandomROIForROIWarping(cls)
     local input = torch.rand(batchSize, 1, H, W);
     local roi = randROI(input:size(), numRoi)
     local delta_roi = roi:clone()
-    delta_roi[{{}, {2, 5}}] = 0; --torch.rand(numRoi, 4) 
+    delta_roi[{{}, {2, 5}}] = torch.rand(numRoi, 4) 
     local module = cls.new(w, h, 1, roi, delta_roi)
     local err = jac.testJacobian(module, input, nil, nil, 1e-3)
     mytester:assertlt(err, precision, 'error on ROIWarping ')
@@ -193,6 +193,50 @@ function inntest.ROIWarping()
   end
 
   testJacobianWithRandomROIForROIWarping(FixedROIWarping)
+end
+
+function testJacobianWithRandomROIForROIWarping2(cls)
+  --pooling grid size
+  local w=4;
+  local h=4;
+  --input size
+  local W=w*2;
+  local H=h*2;
+
+  local batchSize = 3
+  local numRoi = batchSize
+  local numRepeat = 3
+
+  torch.manualSeed(0)
+  for i=1,numRepeat do
+    local input = torch.rand(batchSize, 1, H, W);
+    local roi = randROI(input:size(), numRoi)
+    local delta_roi = roi:clone()
+    delta_roi[{{}, {2, 5}}] = torch.rand(numRoi, 4)
+    local module = cls.new(w, h, 1, roi, input)
+    local err = jac.testJacobian(module, delta_roi, nil, nil, 1e-3)
+    mytester:assertlt(err, precision, 'error on ROIWarping ')
+  end
+end
+
+function inntest.ROIWarping2()
+  ----------------------------------------------------------------------
+  local FixedROIWarping2, parent = torch.class('FixedROIWarping2', 'inn.ROIWarping')
+  function FixedROIWarping2:__init(W, H, s, roi, image)
+    self.roi = roi
+    self.image = image
+    parent.__init(self, W, H, s)
+    self:cuda()
+  end
+
+  function FixedROIWarping2:updateOutput(input)
+    return parent.updateOutput(self,{self.image:cuda(), self.roi:cuda(), input:cuda()})
+  end
+  function FixedROIWarping2:updateGradInput(input, gradOutput)
+    return parent.updateGradInput(self,{self.image:cuda(), self.roi:cuda(), input:cuda()}, gradOutput)[3]
+  end
+
+  testJacobianWithRandomROIForROIWarping2(FixedROIWarping2)
 end
 
 jac = nn.Jacobian

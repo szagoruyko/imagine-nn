@@ -22,13 +22,14 @@ void inn_ROIPooling_updateGradInputAtomic(THCState *state,
     THCudaTensor *gradOutput, THCudaTensor* rois, int W, int H, double spatial_scale);
 
 void inn_ROIWarping_updateOutput(THCState *state,
-    THCudaTensor *output, 
+    THCudaTensor *output, THCudaTensor *output_buffer, 
     THCudaTensor *data, THCudaTensor* rois, THCudaTensor* delta_rois, int W, int H, double spatial_scale);
 void inn_ROIWarping_updateGradInputAtomic(THCState *state,
-    THCudaTensor *gradInput_data, THCudaTensor *data,
+    THCudaTensor *gradInput_data, THCudaTensor *data, 
     THCudaTensor *gradInput_delta_rois, THCudaTensor *delta_rois,
     THCudaTensor *gradInput_delta_rois_buffer,
-    THCudaTensor *gradOutput, THCudaTensor* rois, int W, int H, double spatial_scale);
+    THCudaTensor *gradOutput, THCudaTensor *top_data_buffer,
+    THCudaTensor* rois, int W, int H, double spatial_scale);
 ]]
 
 return ffi.load(libpath)
