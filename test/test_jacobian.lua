@@ -195,11 +195,12 @@ function inntest.ROIWarping()
   testJacobianWithRandomROIForROIWarping(FixedROIWarping)
 end
 
+  ----------------------------------------------------------------------
 function testJacobianWithRandomROIForROIWarping2(cls)
   --pooling grid size
   local w=4;
   local h=4;
-  --input size
+  --img size
   local W=w*2;
   local H=h*2;
 
@@ -209,31 +210,32 @@ function testJacobianWithRandomROIForROIWarping2(cls)
 
   torch.manualSeed(0)
   for i=1,numRepeat do
-    local input = torch.rand(batchSize, 1, H, W);
-    local roi = randROI(input:size(), numRoi)
-    local delta_roi = roi:clone()
-    delta_roi[{{}, {2, 5}}] = torch.rand(numRoi, 4)
-    local module = cls.new(w, h, 1, roi, input)
-    local err = jac.testJacobian(module, delta_roi, nil, nil, 1e-3)
+    local img = torch.rand(batchSize, 1, H, W);
+    local roi = randROI(img:size(), numRoi)
+    local input = torch.rand(numRoi, 4)
+    local module = cls.new(w, h, 1, roi, img)
+    local err = jac.testJacobian(module, input, nil, nil, 1e-3)
     mytester:assertlt(err, precision, 'error on ROIWarping ')
   end
 end
 
 function inntest.ROIWarping2()
-  ----------------------------------------------------------------------
   local FixedROIWarping2, parent = torch.class('FixedROIWarping2', 'inn.ROIWarping')
-  function FixedROIWarping2:__init(W, H, s, roi, image)
+  function FixedROIWarping2:__init(W, H, s, roi, img)
+    self.img = img
     self.roi = roi
-    self.image = image
+    self.delta_roi = self.roi:clone()
     parent.__init(self, W, H, s)
     self:cuda()
   end
 
   function FixedROIWarping2:updateOutput(input)
-    return parent.updateOutput(self,{self.image:cuda(), self.roi:cuda(), input:cuda()})
+    self.delta_roi[{{},{2,5}}] = input:typeAs(self.delta_roi)
+    return parent.updateOutput(self,{self.img:cuda(), self.roi:cuda(), self.delta_roi:cuda()})
   end
   function FixedROIWarping2:updateGradInput(input, gradOutput)
-    return parent.updateGradInput(self,{self.image:cuda(), self.roi:cuda(), input:cuda()}, gradOutput)[3]
+    self.delta_roi[{{},{2,5}}] = input:typeAs(self.delta_roi) 
+    return parent.updateGradInput(self,{self.img:cuda(), self.roi:cuda(), self.delta_roi:cuda()}, gradOutput)[3][{{}, {2, 5}}]
   end
 
   testJacobianWithRandomROIForROIWarping2(FixedROIWarping2)

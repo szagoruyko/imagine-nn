@@ -76,7 +76,7 @@ function ROIWarping:updateGradInput(input,gradOutput)
     gradOutput:cdata(), self.output_buffer:cdata(), 
     rois:cdata(), self.W, self.H, self.spatial_scale)
 
-  --print(self.gradInput_delta_rois_buffer[{1, 1, 1, 1, {}}])
+ --print(self.gradInput_delta_rois_buffer)
 
   self.gradInput_rois:resizeAs(rois):zero()
 

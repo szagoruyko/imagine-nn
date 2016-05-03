@@ -25,7 +25,7 @@ end
 local inn = require 'inn'
 local nn = require 'nn'
 
-local n_images = 2
+local n_images = 1
 local channels = 3
 local height = 3
 local width = 6
@@ -38,12 +38,11 @@ local input_image = torch.Tensor(n_images, sz[1], sz[2], sz[3]):copy(torch.linsp
 print(input_image)
 
 local n_rois = 1
---local n_rois = 2
 local rois=torch.Tensor(n_rois,5)
 for i=1,n_rois do
   idx=torch.randperm(n_images)[1]
-  y=torch.randperm(sz[3])[{{1,2}}]:sort()
-  x=torch.randperm(sz[2])[{{1,2}}]:sort()
+  y=torch.randperm(sz[2])[{{1,2}}]:sort()
+  x=torch.randperm(sz[3])[{{1,2}}]:sort()
   rois[{i,{}}] = torch.Tensor({idx,x[1],y[1],x[2],y[2]})
   --rois[{i,{}}] = torch.Tensor({idx,1,1,sz[3],sz[2]})
   --rois[{i,{}}] = torch.Tensor({idx,1,1,H/2,W/2})
@@ -81,14 +80,14 @@ print(delta_rois)
 print(delta_rois_to_rois(rois[{{}, {2,5}}], delta_rois[{{}, {2,5}}]))
 
 local output = model:forward({input_image:cuda(), rois:cuda(), delta_rois:cuda()})
-local output = model:forward({input_image:clone():fill(1):cuda(), rois:cuda(), delta_rois:cuda()})
+--local output = model:forward({input_image:clone():fill(1):cuda(), rois:cuda(), delta_rois:cuda()})
 print(output)
 print(output:sum())
 
 print('-------------------------')
 local gradOutput = torch.ones(n_rois, channels, H, W):cuda() --torch.rand(n_rois, channels, H, W):cuda() --torch.Tensor(n_rois, channels, 3, 3):fill(1)
 local gradInput = model:backward({input_image:cuda(), rois:cuda(), delta_rois:cuda()}, gradOutput)
---local gradInput = model:backward({input_image:cuda(), rois:cuda(), delta_rois:cuda()}, output)
+--local gradInput = model:backward({input_image:clone():fill(1):cuda(), rois:cuda(), delta_rois:cuda()}, gradOutput)
 print(gradInput[1])
 print(gradInput[1]:sum())
 print(gradInput[2])
