@@ -222,11 +222,11 @@ function testJacobianWithRandomROIForROIWarping2(cls)
   end
 
   --pooling grid size
-  local w=3; --w=4;
-  local h=2; --h=4;
+  local w=4;
+  local h=4;
   --img size
-  local W=4; --local W=w*2;
-  local H=4; --local H=h*2;
+  local W=w*2;
+  local H=h*2;
   
 
   local batchSize = 3
