@@ -150,10 +150,10 @@ __global__ void ROIWarpForward(const int nthreads, const Dtype* bottom_data,
     //top_data[index] = wctr+1;
    
     // Add roi offsets and clip to input boundaries
-    hstart = min(max(hstart, 0), height);         //  
-    hend = min(max(hend, 0), height);
+    hstart = min(max(hstart, 0), height);
+    hend   = min(max(hend, 0), height);
     wstart = min(max(wstart, 0), width);
-    wend = min(max(wend, 0), width);
+    wend   = min(max(wend, 0), width);
 
     //top_data[index] = hstart+1; 
     //top_data[index] = wstart+1;
@@ -172,7 +172,7 @@ __global__ void ROIWarpForward(const int nthreads, const Dtype* bottom_data,
       for (int w = wstart; w < wend; ++w) {
         int bottom_index = h * width + w;
         Dtype w_ = w;  
-        //gain_x = max(0., 1 - abs( dst_ctr_x + static_cast<Dtype>(pw) / static_cast<Dtype>(pooled_width) * dst_scl_x - w ));
+        //gain_x = max(0., 1 - abs( dst_ctr_x + static_cast<Dtype>(pw) / static_cast<Dtype>(pooled_width) * dst_scl_x - w )); -- in paper, but makes no sense
         //gain_y = max(0., 1 - abs( dst_ctr_y + static_cast<Dtype>(ph) / static_cast<Dtype>(pooled_height) * dst_scl_y - h));
         gain_x = wdiff - abs((w_ - wctr)); 
         gain_y = hdiff - abs((h_ - hctr));   
@@ -237,7 +237,7 @@ void inn_ROIWarping_updateOutput(THCState *state,
   long nInputPlane = data->size[1];
   THCudaTensor_resize4d(state, output, num_rois, nInputPlane, H, W);
   THCudaTensor_resize5d(state, output_buffer, num_rois, nInputPlane, H, W, 10);
-  //THCudaTensor_zero(state, output_buffer);
+  THCudaTensor_zero(state, output_buffer);
 
   long count = THCudaTensor_nElement(state, output);
 
@@ -268,7 +268,7 @@ __global__ void ROIWarpBackwardData(const int nthreads, const Dtype* top_data_bu
     Dtype* bottom_diff_data) {
   CUDA_KERNEL_LOOP(index, nthreads) {
 
-    // (n, c, h, w) is an element in the pooled output
+    // (n, c, h, w) is an element in the input 
     int w = index % width;
     int h = (index / width) % height;
     int c = (index / width / height) % channels;
@@ -311,10 +311,6 @@ __global__ void ROIWarpBackwardData(const int nthreads, const Dtype* top_data_bu
       int phstart = static_cast<int>(floor(static_cast<Dtype>(-roi_start_h + h) * bin_size_ph)); 
       int pwend = static_cast<int>(ceil(static_cast<Dtype>(-roi_start_w + w+1) * bin_size_pw));
       int phend = static_cast<int>(ceil(static_cast<Dtype>(-roi_start_h + h+1) * bin_size_ph)); 
-      //Dtype pwstart = static_cast<int>(floor(static_cast<Dtype>(-roi_start_w + w) * bin_size_pw));
-      //Dtype phstart = static_cast<int>(floor(static_cast<Dtype>(-roi_start_h + h) * bin_size_ph));
-      //Dtype pwend = static_cast<int>(ceil(static_cast<Dtype>(-roi_start_w + w+1) * bin_size_pw));
-      //Dtype phend = static_cast<int>(ceil(static_cast<Dtype>(-roi_start_h + h+1) * bin_size_ph));
    
       //bottom_diff_data[index] = pwend; //phend; 
       //bottom_diff_data[index] = pwstart+1; //phend; 
@@ -525,11 +521,10 @@ __global__ void ROIWarpBackwardDeltaROI(const int nthreads, const Dtype* top_dat
       // ... 
       */ 
       // Add roi offsets and clip to input boundaries
-      hstart = min(max(hstart, 0), height);         //  
-      hend = min(max(hend, 0), height);
+      hstart = min(max(hstart, 0), height);
+      hend   = min(max(hend, 0), height);
       wstart = min(max(wstart, 0), width);
-      wend = min(max(wend, 0), width);
-      //bool is_empty = (hend <= hstart) || (wend <= wstart);
+      wend   = min(max(wend, 0), width);
 
       // Define an empty pooling region to be zero
       Dtype val_cx = 0, val_cy = 0, val_sx = 0, val_sy = 0; 
@@ -557,7 +552,7 @@ __global__ void ROIWarpBackwardDeltaROI(const int nthreads, const Dtype* top_dat
           //val_sy = val_sy + gain_x *((         gain_y_all - gain_y * dgy_final_dhdiff_all) / (gain_y_all*gain_y_all) * (ph_+0.5) / pooled_hidth * spatial_scale * src_h * eyp(dsy) +
           //                           (h_mask * gain_y_all - gain_y * dgy_final_dhctr_all ) / (gain_y_all*gain_y_all) * (1 / pooled_hidth + 1)   * spatial_scale * src_h * eyp(dsy) ) * top_diff[index];
 
-          //if (gain_x > 1e-10 && gain_y > 1e-10) {
+          if (gain_x > 1e-10 && gain_y > 1e-10) {
             coeff_x = bottom_data[bottom_index] * gain_y / gain_y_all * spatial_scale * src_w * top_diff[index] / (gain_x_all*gain_x_all);
             val_cx = val_cx +  (w_mask * gain_x_all - gain_x * dgx_final_dwctr_all )                                         * coeff_x;
             val_sx = val_sx + ((w_mask * gain_x_all - gain_x * dgx_final_dwctr_all ) * (pw_+0.5) +
@@ -567,7 +562,7 @@ __global__ void ROIWarpBackwardDeltaROI(const int nthreads, const Dtype* top_dat
             val_cy = val_cy +  (h_mask * gain_y_all - gain_y * dgy_final_dhctr_all )                                           * coeff_y;
             val_sy = val_sy + ((h_mask * gain_y_all - gain_y * dgy_final_dhctr_all ) * (ph_+0.5) + 
                                (         gain_y_all - gain_y * dgy_final_dhdiff_all) * (1 + pooled_height_) ) / pooled_height_ * coeff_y * exp(dst_scl_y);
-          //}
+          }
         }
       }
       /*int*/ buffer_index = n * (channels * pooled_height * pooled_width * 4) + c * (pooled_height * pooled_width * 4) + ph * (pooled_width * 4) + pw * 4; 

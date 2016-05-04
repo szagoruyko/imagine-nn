@@ -197,12 +197,37 @@ end
 
   ----------------------------------------------------------------------
 function testJacobianWithRandomROIForROIWarping2(cls)
+  local function delta_rois_to_rois(rois, delta_rois)
+    local src_w = rois[{{},3}] - rois[{{},1}] + 1;
+    local src_h = rois[{{},4}] - rois[{{},2}] + 1;
+    local src_ctr_x = rois[{{},1}] + 0.5*(src_w-1.0);
+    local src_ctr_y = rois[{{},2}] + 0.5*(src_h-1.0);
+  
+    local dst_ctr_x = delta_rois[{{},1}]; -- dx (in fast-rcnn notation) = cx (in here)
+    local dst_ctr_y = delta_rois[{{},2}]; -- dy (in fast-rcnn notation) = cy (in here)
+    local dst_scl_x = delta_rois[{{},3}]; -- dw (in fast-rcnn notation) = sx (in here)
+    local dst_scl_y = delta_rois[{{},4}]; -- dh (in fast-rcnn notation) = sy (in here)
+  
+    local pred_ctr_x = torch.cmul(dst_ctr_x, src_w) + src_ctr_x;
+    local pred_ctr_y = torch.cmul(dst_ctr_y, src_h) + src_ctr_y;
+    local pred_w = torch.cmul(torch.exp(dst_scl_x), src_w);
+    local pred_h = torch.cmul(torch.exp(dst_scl_y), src_h);
+  
+    local roi_start_w = torch.round(pred_ctr_x - 0.5*(pred_w-1)) ;
+    local roi_start_h = torch.round(pred_ctr_y - 0.5*(pred_h-1)) ;
+    local roi_end_w =   torch.round(pred_ctr_x + 0.5*(pred_w-1)) ;
+    local roi_end_h =   torch.round(pred_ctr_y + 0.5*(pred_h-1)) ;
+  
+    return torch.cat({roi_start_w, roi_start_h, roi_end_w, roi_end_h}, 2)
+  end
+
   --pooling grid size
-  local w=4;
-  local h=4;
+  local w=3; --w=4;
+  local h=2; --h=4;
   --img size
-  local W=w*2;
-  local H=h*2;
+  local W=4; --local W=w*2;
+  local H=4; --local H=h*2;
+  
 
   local batchSize = 3
   local numRoi = batchSize
@@ -211,10 +236,28 @@ function testJacobianWithRandomROIForROIWarping2(cls)
   torch.manualSeed(0)
   for i=1,numRepeat do
     local img = torch.rand(batchSize, 1, H, W);
+    --local roi = torch.Tensor{1, 1, 1, W, H}:reshape(1, 5)
     local roi = randROI(img:size(), numRoi)
     local input = torch.rand(numRoi, 4)
     local module = cls.new(w, h, 1, roi, img)
-    local err = jac.testJacobian(module, input, nil, nil, 1e-3)
+
+    print('---0000000000000000000000000000')
+    print(img)
+    print(roi)
+    print(input)
+    print(delta_rois_to_rois(roi[{{}, {2,5}}], input))
+
+    local perturbation = 1e-3
+    local jac_fprop = jac.forward(module, input, input, 1e-3) 
+    --module:forward(input)
+    local jac_bprop = jac.backward(module, input)
+ 
+    print('---1111111111111111111111111111')
+    print(jac_fprop)
+    print('---2222222222222222222222222222')
+    print(jac_bprop)   
+   
+    local err = jac.testJacobian(module, input, -1, 1, 1e-3)
     mytester:assertlt(err, precision, 'error on ROIWarping ')
   end
 end

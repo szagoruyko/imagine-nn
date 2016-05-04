@@ -27,16 +27,11 @@ function ROIWarping:updateOutput(input)
     self.delta_rois = self.delta_rois or rois.new()
     self.delta_rois:resizeAs(rois):zero()
     self.delta_rois[{{}, 1}] = rois[{{}, 1}] 
-    --delta_rois = rois:clone()
-    --delta_rois[{{},{2,5}}] = 0
     delta_rois = self.delta_rois
   end
  
   self.output_buffer = self.output_buffer or data.new()
  
-  --C.inn_ROIWarping_updateOutput(cutorch.getState(),
-  --  self.output:cdata(), self.indices:cdata(), data:cdata(), rois:cdata(), delta_rois:cdata(), 
-  --  self.W, self.H, self.spatial_scale)
   C.inn_ROIWarping_updateOutput(cutorch.getState(),
     self.output:cdata(), self.output_buffer:cdata(),
     data:cdata(), rois:cdata(), delta_rois:cdata(),

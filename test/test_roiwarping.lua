@@ -96,6 +96,16 @@ print(gradInput[3]:sum())
 
 --[[
 local jac = nn.Jacobian
+--nn.Jacobian.testJacobian(module, input, minval, maxval, perturbation)
+local perturbation = 1e-3
+local minval = minval or -2
+local maxval = maxval or 2
+local inrange = maxval - minval
+input:copy(torch.rand(input:nElement()):mul(inrange):add(minval))
+local jac_fprop = jac.forward(module, input, input, perturbation)
+local jac_bprop = jac.backward(module, input)
+local error = jac_fprop-jac_bprop
+
 local err = jac.testJacobian(model, {input_image, rois, delta_rois}, nil, nil, 1e-3)
 print(err)
 local b = jac.backward(model, {input_image, rois, delta_rois})
