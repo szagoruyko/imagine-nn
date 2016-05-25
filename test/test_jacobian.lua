@@ -152,7 +152,7 @@ function inntest.ROIPooling()
   testJacobianWithRandomROI(FixedROIPooling, true)
 end
 
-function testJacobianWithRandomROIForROIWarping(cls)
+function testJacobianWithRandomROIForROIWarpingData(cls)
   --pooling grid size
   local w=4; 
   local h=4;
@@ -176,7 +176,7 @@ function testJacobianWithRandomROIForROIWarping(cls)
   end
 end
 
-function inntest.ROIWarping()
+function inntest.ROIWarpingData()
   local FixedROIWarping, parent = torch.class('FixedROIWarping', 'inn.ROIWarping')
   function FixedROIWarping:__init(W, H, s, roi, delta_roi)
     self.roi = roi
@@ -192,11 +192,11 @@ function inntest.ROIWarping()
     return parent.updateGradInput(self,{input:cuda(), self.roi, self.delta_roi}, gradOutput)[1]
   end
 
-  testJacobianWithRandomROIForROIWarping(FixedROIWarping)
+  testJacobianWithRandomROIForROIWarpingData(FixedROIWarping)
 end
 
   ----------------------------------------------------------------------
-function testJacobianWithRandomROIForROIWarping2(cls)
+function testJacobianWithRandomROIForROIWarpingDeltaROI(cls)
   local function delta_rois_to_rois(rois, delta_rois)
     local src_w = rois[{{},3}] - rois[{{},1}] + 1;
     local src_h = rois[{{},4}] - rois[{{},2}] + 1;
@@ -235,14 +235,14 @@ function testJacobianWithRandomROIForROIWarping2(cls)
 
   torch.manualSeed(0)
   for i=1,numRepeat do
-    local img = torch.rand(batchSize, 1, H, W);
+    local img = torch.rand(batchSize, 3, H, W);
     --local roi = torch.Tensor{1, 1, 1, W, H}:reshape(1, 5)
     local roi = randROI(img:size(), numRoi)
     local input = torch.rand(numRoi, 4)
     local module = cls.new(w, h, 1, roi, img)
 
     print('---0000000000000000000000000000')
-    print(img)
+    --print(img)
     print(roi)
     print(input)
     print(delta_rois_to_rois(roi[{{}, {2,5}}], input))
@@ -252,8 +252,8 @@ function testJacobianWithRandomROIForROIWarping2(cls)
     --module:forward(input)
     local jac_bprop = jac.backward(module, input)
  
-    print('---1111111111111111111111111111')
-    print(jac_fprop)
+    --print('---1111111111111111111111111111')
+    --print(jac_fprop)
     print('---2222222222222222222222222222')
     print(jac_bprop)   
    
@@ -262,7 +262,7 @@ function testJacobianWithRandomROIForROIWarping2(cls)
   end
 end
 
-function inntest.ROIWarping2()
+function inntest.ROIWarpingDeltaROI()
   local FixedROIWarping2, parent = torch.class('FixedROIWarping2', 'inn.ROIWarping')
   function FixedROIWarping2:__init(W, H, s, roi, img)
     self.img = img
@@ -281,7 +281,7 @@ function inntest.ROIWarping2()
     return parent.updateGradInput(self,{self.img:cuda(), self.roi:cuda(), self.delta_roi:cuda()}, gradOutput)[3][{{}, {2, 5}}]
   end
 
-  testJacobianWithRandomROIForROIWarping2(FixedROIWarping2)
+  testJacobianWithRandomROIForROIWarpingDeltaROI(FixedROIWarping2)
 end
 
 jac = nn.Jacobian
