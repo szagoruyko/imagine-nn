@@ -321,7 +321,7 @@ __global__ void ROIWarpBackwardDeltaROI(const int nthreads, const Dtype* top_dat
     Dtype dgx_final_dwdiff_all = top_data_buffer[buffer_index+8];
     Dtype dgy_final_dhdiff_all = top_data_buffer[buffer_index+9];
 
-    if (gain_x_all > 1e-10 && gain_y_all > 1e-10) {
+    //if (gain_x_all > 1e-10 && gain_y_all > 1e-10) {
 
       bottom_rois += n * 5;
       int roi_batch_ind = (bottom_rois[0] - 1);
@@ -497,24 +497,28 @@ __global__ void ROIWarpBackwardDeltaROI(const int nthreads, const Dtype* top_dat
           w_mask = w_ >= wctr ? 1 : -1;   
           h_mask = h_ >= hctr ? 1 : -1;  
 
-          //val_cx = val_cx + gain_y * (w_mask * gain_x_all - gain_x * dgx_final_dwctr_all ) / (gain_x_all*gain_x_all)                            * spatial_scale * src_w * top_diff[index]; 
-          //val_cy = val_cy + gain_x * (h_mask * gain_y_all - gain_y * dgy_final_dhctr_all ) / (gain_y_all*gain_y_all)                            * spatial_scale * src_h * top_diff[index];
-          //val_sx = val_sx + gain_y *((         gain_x_all - gain_x * dgx_final_dwdiff_all) / (gain_x_all*gain_x_all) * (pw_+0.5-0.5*pooled_width) / pooled_width * spatial_scale * src_w * exp(dsx) + 
-          //                           (w_mask * gain_x_all - gain_x * dgx_final_dwctr_all ) / (gain_x_all*gain_x_all) *     1     / pooled_width * spatial_scale * src_w * exp(dsx) ) * top_diff[index]; 
-          //val_sy = val_sy + gain_x *((         gain_y_all - gain_y * dgy_final_dhdiff_all) / (gain_y_all*gain_y_all) * (ph_+0.5-0.5*pooled_height)/ pooled_hidth * spatial_scale * src_h * eyp(dsy) +
-          //                           (h_mask * gain_y_all - gain_y * dgy_final_dhctr_all ) / (gain_y_all*gain_y_all) *     1     / pooled_hidth * spatial_scale * src_h * eyp(dsy) ) * top_diff[index];
+          //val_cx = val_cx + gain_y / gain_y_all * (w_mask * gain_x_all - gain_x * dgx_final_dwctr_all ) / (gain_x_all*gain_x_all)                            * spatial_scale * src_w * top_diff[index]; 
+          //val_cy = val_cy + gain_x / gain_x_all * (h_mask * gain_y_all - gain_y * dgy_final_dhctr_all ) / (gain_y_all*gain_y_all)                            * spatial_scale * src_h * top_diff[index];
+          //val_sx = val_sx + gain_y / gain_y_all *((         gain_x_all - gain_x * dgx_final_dwdiff_all) / (gain_x_all*gain_x_all) * (pw_+0.5-0.5*pooled_width) / pooled_width * spatial_scale * src_w * exp(dsx) + 
+          //                                        (w_mask * gain_x_all - gain_x * dgx_final_dwctr_all ) / (gain_x_all*gain_x_all) *            1               / pooled_width * spatial_scale * src_w * exp(dsx) ) * top_diff[index]; 
+          //val_sy = val_sy + gain_x / gain_x_all *((         gain_y_all - gain_y * dgy_final_dhdiff_all) / (gain_y_all*gain_y_all) * (ph_+0.5-0.5*pooled_height)/ pooled_hidth * spatial_scale * src_h * eyp(dsy) +
+          //                                        (h_mask * gain_y_all - gain_y * dgy_final_dhctr_all ) / (gain_y_all*gain_y_all) *            1               / pooled_hidth * spatial_scale * src_h * eyp(dsy) ) * top_diff[index];
 
-          if (gain_x > 1e-10 && gain_y > 1e-10) {
-            coeff_x = bottom_data[bottom_index] * gain_y / gain_y_all * spatial_scale * src_w * top_diff[index] / (gain_x_all*gain_x_all);
-            val_cx = val_cx +  (w_mask * gain_x_all - gain_x * dgx_final_dwctr_all )                                         * coeff_x;
+          //if (gain_x > 1e-10 && gain_y > 1e-10) {
+            coeff_x = bottom_data[bottom_index] * gain_y * spatial_scale * src_w * top_diff[index];
+            if (gain_x_all > 1e-10) {coeff_x = coeff_x / (gain_x_all*gain_x_all);} 
+            if (gain_y_all > 1e-10) {coeff_x = coeff_x / gain_y_all;}
+            val_cx = val_cx +  (w_mask * gain_x_all - gain_x * dgx_final_dwctr_all ) * coeff_x;
             val_sx = val_sx + ((w_mask * gain_x_all - gain_x * dgx_final_dwctr_all ) * (pw_+0.5-0.5*pooled_width_) +
                                (         gain_x_all - gain_x * dgx_final_dwdiff_all)) / pooled_width_ * coeff_x * exp(dst_scl_x);
           
-            coeff_y = bottom_data[bottom_index] * gain_x / gain_x_all * spatial_scale * src_h * top_diff[index] / (gain_y_all*gain_y_all);
-            val_cy = val_cy +  (h_mask * gain_y_all - gain_y * dgy_final_dhctr_all )                                           * coeff_y;
+            coeff_y = bottom_data[bottom_index] * gain_x * spatial_scale * src_h * top_diff[index];
+            if (gain_y_all > 1e-10) {coeff_y = coeff_y / (gain_y_all*gain_y_all);}
+            if (gain_x_all > 1e-10) {coeff_y = coeff_y / gain_x_all;}
+            val_cy = val_cy +  (h_mask * gain_y_all - gain_y * dgy_final_dhctr_all ) * coeff_y;
             val_sy = val_sy + ((h_mask * gain_y_all - gain_y * dgy_final_dhctr_all ) * (ph_+0.5-0.5*pooled_height_) + 
                                (         gain_y_all - gain_y * dgy_final_dhdiff_all)) / pooled_height_ * coeff_y * exp(dst_scl_y);
-          }
+          //}
         }
       }
       /*int*/ buffer_index = n * (channels * pooled_height * pooled_width * 4) + c * (pooled_height * pooled_width * 4) + ph * (pooled_width * 4) + pw * 4; 
@@ -522,7 +526,7 @@ __global__ void ROIWarpBackwardDeltaROI(const int nthreads, const Dtype* top_dat
       bottom_diff_delta_rois_buffer[buffer_index+1] = val_cy; 
       bottom_diff_delta_rois_buffer[buffer_index+2] = val_sx;
       bottom_diff_delta_rois_buffer[buffer_index+3] = val_sy;
-    }
+    //}
   }
 }
 
