@@ -14,10 +14,10 @@ local function delta_rois_to_rois(rois, delta_rois)
   local pred_w = torch.cmul(torch.exp(dst_scl_x), src_w);            
   local pred_h = torch.cmul(torch.exp(dst_scl_y), src_h);            
 
-  local roi_start_w = torch.round(pred_ctr_x - 0.5*(pred_w-1)) ; 
-  local roi_start_h = torch.round(pred_ctr_y - 0.5*(pred_h-1)) ; 
-  local roi_end_w =   torch.round(pred_ctr_x + 0.5*(pred_w-1)) ; 
-  local roi_end_h =   torch.round(pred_ctr_y + 0.5*(pred_h-1)) ; 
+  local roi_start_w = pred_ctr_x - 0.5*(pred_w-1) 
+  local roi_start_h = pred_ctr_y - 0.5*(pred_h-1) 
+  local roi_end_w =   pred_ctr_x + 0.5*(pred_w-1) 
+  local roi_end_h =   pred_ctr_y + 0.5*(pred_h-1) 
 
   return torch.cat({roi_start_w, roi_start_h, roi_end_w, roi_end_h}, 2)
 end
@@ -78,7 +78,7 @@ delta_rois[{{}, {2,5}}] = torch.rand(n_rois, 4)
 --delta_rois[{{}, {2,5}}] = torch.Tensor{0.9336, 0.4434, 0.5211, 0.1230}:reshape(1,4)
 print(delta_rois)
 print(delta_rois_to_rois(rois[{{}, {2,5}}], delta_rois[{{}, {2,5}}]))
-
+--[[
 local output = model:forward({input_image:cuda(), rois:cuda(), delta_rois:cuda()})
 --local output = model:forward({input_image:clone():fill(1):cuda(), rois:cuda(), delta_rois:cuda()})
 print(output)
@@ -93,21 +93,18 @@ print(gradInput[1]:sum())
 print(gradInput[2])
 print(gradInput[3])
 print(gradInput[3]:sum())
-
---[[
-local jac = nn.Jacobian
---nn.Jacobian.testJacobian(module, input, minval, maxval, perturbation)
-local perturbation = 1e-3
-local minval = minval or -2
-local maxval = maxval or 2
-local inrange = maxval - minval
-input:copy(torch.rand(input:nElement()):mul(inrange):add(minval))
-local jac_fprop = jac.forward(module, input, input, perturbation)
-local jac_bprop = jac.backward(module, input)
-local error = jac_fprop-jac_bprop
-
-local err = jac.testJacobian(model, {input_image, rois, delta_rois}, nil, nil, 1e-3)
-print(err)
-local b = jac.backward(model, {input_image, rois, delta_rois})
-print(b)
 ]]
+
+print('------------------------------------------------------------')
+local model = inn.ROIWarpingGridGenerator(W,H)
+model:cuda()
+local output = model:forward({rois:cuda(), delta_rois:cuda()})
+print(output[1]:select(4,1))
+print(output[1]:select(4,2))
+print(output[2])
+
+local gradOutput = {torch.ones(n_rois, H, W, 2):cuda(), --torch.rand(n_rois, channels, H, W, 2):cuda()
+                    torch.ones(n_rois, 2):cuda()} 
+local gradInput = model:backward({rois:cuda(), delta_rois:cuda()}, gradOutput)
+print(gradInput[1])
+print(gradInput[2])

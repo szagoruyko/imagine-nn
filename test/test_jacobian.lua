@@ -194,7 +194,7 @@ function inntest.ROIWarpingData()
 
   testJacobianWithRandomROIForROIWarpingData(FixedROIWarping)
 end
-
+--[[
   ----------------------------------------------------------------------
 function testJacobianWithRandomROIForROIWarpingDeltaROI(cls)
   local function delta_rois_to_rois(rois, delta_rois)
@@ -282,6 +282,88 @@ function inntest.ROIWarpingDeltaROI()
   end
 
   testJacobianWithRandomROIForROIWarpingDeltaROI(FixedROIWarping2)
+end
+]]
+----------------------------------------------------------------------
+function testJacobianWithRandomROIForROIWarpingGridGenerator(cls)
+  --pooling grid size
+  local w=4;
+  local h=4;
+  --img size
+  local W=w*2;
+  local H=h*2;
+
+  local batchSize = 3
+  local numRoi = batchSize
+  local numRepeat = 3
+
+  torch.manualSeed(0)
+  for i=1,numRepeat do
+    local img = torch.rand(batchSize, 3, H, W);
+    --local roi = torch.Tensor{1, 1, 1, W, H}:reshape(1, 5)
+    local roi = randROI(img:size(), numRoi)
+    local input = torch.rand(numRoi, 4)
+    local module = cls.new(w, h, roi)
+
+    local perturbation = 1e-3
+    local jac_fprop = jac.forward(module, input, input, 1e-3)
+    local jac_bprop = jac.backward(module, input)
+ 
+    local err = jac.testJacobian(module, input, -1, 1, 1e-3)
+    mytester:assertlt(err, precision, 'error on ROIWarping ')
+  end
+end
+
+function inntest.ROIWarpingGridGeneratorGridCtrs()
+  local FixedROIWarpingGridGeneratorGridCtrs, parent = torch.class('FixedROIWarpingGridGeneratorGridCtrs', 'inn.ROIWarpingGridGenerator')
+  function FixedROIWarpingGridGeneratorGridCtrs:__init(W, H, roi)
+    parent.__init(self, W, H)
+    self.roi = roi
+    self.delta_roi = self.roi:clone()
+    self.grad_bin_sizes = torch.zeros(roi:size(1), 2)
+    self:cuda()
+  end
+
+  function FixedROIWarpingGridGeneratorGridCtrs:updateOutput(input)
+    self.delta_roi[{{},{2,5}}] = input:typeAs(self.delta_roi)
+    local tmp = parent.updateOutput(self, {self.roi:cuda(), self.delta_roi:cuda()})
+    self.output = self.output or input:cuda().new()
+    self.output:resizeAs(tmp[1]):copy(tmp[1])
+    return self.output
+  end
+  function FixedROIWarpingGridGeneratorGridCtrs:updateGradInput(input, gradOutput)
+    self.delta_roi[{{},{2,5}}] = input:typeAs(self.delta_roi)
+    self.gradInput = parent.updateGradInput(self,{self.roi:cuda(), self.delta_roi:cuda()}, {gradOutput, self.grad_bin_sizes:cuda()})
+    return self.gradInput[2][{{}, {2, 5}}]
+  end
+
+  testJacobianWithRandomROIForROIWarpingGridGenerator(FixedROIWarpingGridGeneratorGridCtrs)
+end
+
+function inntest.ROIWarpingGridGeneratorBinSizes()
+  local FixedROIWarpingGridGeneratorBinSizes, parent = torch.class('FixedROIWarpingGridGeneratorBinSizes', 'inn.ROIWarpingGridGenerator')
+  function FixedROIWarpingGridGeneratorBinSizes:__init(W, H, roi)
+    parent.__init(self, W, H)
+    self.roi = roi
+    self.delta_roi = self.roi:clone()
+    self.grad_grid_ctrs = torch.zeros(roi:size(1), H, W, 2)
+    self:cuda()
+  end
+
+  function FixedROIWarpingGridGeneratorBinSizes:updateOutput(input)
+    self.delta_roi[{{},{2,5}}] = input:typeAs(self.delta_roi)
+    local tmp = parent.updateOutput(self, {self.roi:cuda(), self.delta_roi:cuda()})
+    self.output = self.output or input:cuda().new()
+    self.output:resizeAs(tmp[2]):copy(tmp[2])
+    return self.output
+  end
+  function FixedROIWarpingGridGeneratorBinSizes:updateGradInput(input, gradOutput)
+    self.delta_roi[{{},{2,5}}] = input:typeAs(self.delta_roi)
+    self.gradInput = parent.updateGradInput(self,{self.roi:cuda(), self.delta_roi:cuda()}, {self.grad_grid_ctrs:cuda(), gradOutput})
+    return self.gradInput[2][{{}, {2, 5}}]
+  end
+
+  testJacobianWithRandomROIForROIWarpingGridGenerator(FixedROIWarpingGridGeneratorBinSizes)
 end
 
 jac = nn.Jacobian
