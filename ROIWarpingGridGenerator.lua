@@ -2,7 +2,7 @@
   This code is borrowed from AffineGridGeneratorBHWD.lua in https://github.com/qassemoquab/stnbhwd
 ]]
 
-local RWGG, parent = torch.class('inn.ROIWarpingGridGenerator', 'nn.Container')
+local RWGG, parent = torch.class('inn.ROIWarpingGridGenerator', 'nn.Module')
 
 local function fast_rcnn_bbox_transform_inv(rois, delta_rois)
 -- rois       : N by 4 torch.Tensor; for each row, rois[{n, {}}]       == x_start, y_start, x_end, y_end (in image coordinates)
@@ -81,8 +81,10 @@ function RWGG:updateOutput(input) --(_transformMatrix)
   -- allocate output
   self.output_tmp[1] = self.output_tmp[1] or rois.new()
   self.output_tmp[2] = self.output_tmp[2] or rois.new()
-  local grid_ctrs = self.output_tmp[1] 
+  self.output_tmp[3] = self.output_tmp[3] or rois.new()
+  local grid_ctrs = self.output_tmp[1]
   local bin_sizes = self.output_tmp[2]
+  local roi_batch_inds = self.output_tmp[3]
  
   -- prepare msc 
   local pred_rois = fast_rcnn_bbox_transform_inv(rois[{{}, {2, 5}}], delta_rois[{{}, {2, 5}}])
@@ -97,6 +99,10 @@ function RWGG:updateOutput(input) --(_transformMatrix)
  
   grid_ctrs:resize(batch_size, self.height, self.width, 2):fill(0) -- b x h x w x 2 (x, y == width, height)
   bin_sizes:resize(batch_size, 2):fill(0)                          -- b x 2         (x, y == width, height) 
+  roi_batch_inds:resize(batch_size, 1):fill(0)
+  
+  -- update roi_batch_inds
+  roi_batch_inds:copy(rois[{{},{1}}])
 
   -- update bin_sizes
   bin_sizes:select(2,1):copy(bin_size_w:reshape(batch_size, 1)) -- width 

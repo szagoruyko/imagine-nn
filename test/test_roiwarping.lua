@@ -25,7 +25,9 @@ end
 local inn = require 'inn'
 local nn = require 'nn'
 
-local n_images = 1
+torch.manualSeed(0)
+
+local n_images = 1 -- 2 
 local channels = 3
 local height = 3
 local width = 6
@@ -37,7 +39,7 @@ local input_image = torch.Tensor(n_images, sz[1], sz[2], sz[3]):copy(torch.linsp
 
 print(input_image)
 
-local n_rois = 1
+local n_rois = 1 -- 3 --10
 local rois=torch.Tensor(n_rois,5)
 for i=1,n_rois do
   idx=torch.randperm(n_images)[1]
@@ -71,13 +73,16 @@ print('-------------------------')
 local delta_rois = rois:clone()
 --delta_rois[{{}, {2,5}}] = 0 
 --delta_rois[{{}, {2,5}}] = torch.ones(n_rois, 4) * 0.1 
-delta_rois[{{}, {2,5}}] = torch.rand(n_rois, 4)
+delta_rois[{{}, {2,5}}] = 0.1 * torch.rand(n_rois, 4)
 --delta_rois[{{}, {2,5}}] = torch.Tensor{0.7887, 0.4103, 0.7086, 0.7714}:reshape(1,4)
 --delta_rois[{{}, {2,5}}] = torch.Tensor{0.4694, 0.1311, 0.8265, 0.1495, 0.9336, 0.4434, 0.5211, 0.1230}:reshape(2,4)
 --delta_rois[{{}, {2,5}}] = torch.Tensor{0.4694, 0.1311, 0.8265, 0.1495}:reshape(1,4)
 --delta_rois[{{}, {2,5}}] = torch.Tensor{0.9336, 0.4434, 0.5211, 0.1230}:reshape(1,4)
+print(rois)
 print(delta_rois)
-print(delta_rois_to_rois(rois[{{}, {2,5}}], delta_rois[{{}, {2,5}}]))
+local pred_rois = delta_rois_to_rois(rois[{{}, {2,5}}], delta_rois[{{}, {2,5}}])
+print(pred_rois)
+print(torch.round(pred_rois))
 --[[
 local output = model:forward({input_image:cuda(), rois:cuda(), delta_rois:cuda()})
 --local output = model:forward({input_image:clone():fill(1):cuda(), rois:cuda(), delta_rois:cuda()})
@@ -95,16 +100,38 @@ print(gradInput[3])
 print(gradInput[3]:sum())
 ]]
 
-print('------------------------------------------------------------')
-local model = inn.ROIWarpingGridGenerator(W,H)
+--print('------------------------------------------------------------')
+local model = inn.ROIWarpingGridGenerator(H, W)
 model:cuda()
 local output = model:forward({rois:cuda(), delta_rois:cuda()})
 print(output[1]:select(4,1))
 print(output[1]:select(4,2))
-print(output[2])
+--print(output[2])
+--print(output[3])
+local grid_ctrs = output[1]:clone()
+local bin_sizes = output[2]:clone()
+local roi_batch_inds = output[3]:clone() 
 
 local gradOutput = {torch.ones(n_rois, H, W, 2):cuda(), --torch.rand(n_rois, channels, H, W, 2):cuda()
                     torch.ones(n_rois, 2):cuda()} 
 local gradInput = model:backward({rois:cuda(), delta_rois:cuda()}, gradOutput)
 print(gradInput[1])
 print(gradInput[2])
+
+print('------------------------------------------------------------')
+local input_image = torch.ones(input_image:size())
+local model = inn.ROIWarpingBilinearSample(H, W)
+model:cuda()
+local output = model:forward({input_image:cuda(), grid_ctrs:cuda(), bin_sizes:cuda(), roi_batch_inds:cuda()})
+print(output)
+print(output:sum())
+
+local gradOutput = torch.ones(n_rois, channels, H, W):cuda()
+local gradInput = model:backward({input_image:cuda(), grid_ctrs:cuda(), bin_sizes:cuda(), roi_batch_inds:cuda()}, gradOutput)
+print('hi0000000000000000000000')
+print(gradInput)
+print(gradInput[1])
+print(gradInput[1]:sum())
+--print(gradInput[2])
+--print(gradInput[3])
+--print(gradInput[4])

@@ -303,7 +303,7 @@ function testJacobianWithRandomROIForROIWarpingGridGenerator(cls)
     --local roi = torch.Tensor{1, 1, 1, W, H}:reshape(1, 5)
     local roi = randROI(img:size(), numRoi)
     local input = torch.rand(numRoi, 4)
-    local module = cls.new(w, h, roi)
+    local module = cls.new(h, w, roi)
 
     local perturbation = 1e-3
     local jac_fprop = jac.forward(module, input, input, 1e-3)
@@ -316,8 +316,8 @@ end
 
 function inntest.ROIWarpingGridGeneratorGridCtrs()
   local FixedROIWarpingGridGeneratorGridCtrs, parent = torch.class('FixedROIWarpingGridGeneratorGridCtrs', 'inn.ROIWarpingGridGenerator')
-  function FixedROIWarpingGridGeneratorGridCtrs:__init(W, H, roi)
-    parent.__init(self, W, H)
+  function FixedROIWarpingGridGeneratorGridCtrs:__init(H, W, roi)
+    parent.__init(self, H, W)
     self.roi = roi
     self.delta_roi = self.roi:clone()
     self.grad_bin_sizes = torch.zeros(roi:size(1), 2)
@@ -342,8 +342,8 @@ end
 
 function inntest.ROIWarpingGridGeneratorBinSizes()
   local FixedROIWarpingGridGeneratorBinSizes, parent = torch.class('FixedROIWarpingGridGeneratorBinSizes', 'inn.ROIWarpingGridGenerator')
-  function FixedROIWarpingGridGeneratorBinSizes:__init(W, H, roi)
-    parent.__init(self, W, H)
+  function FixedROIWarpingGridGeneratorBinSizes:__init(H, W, roi)
+    parent.__init(self, H, W)
     self.roi = roi
     self.delta_roi = self.roi:clone()
     self.grad_grid_ctrs = torch.zeros(roi:size(1), H, W, 2)
@@ -364,6 +364,175 @@ function inntest.ROIWarpingGridGeneratorBinSizes()
   end
 
   testJacobianWithRandomROIForROIWarpingGridGenerator(FixedROIWarpingGridGeneratorBinSizes)
+end
+
+function testJacobianWithRandomROIForROIWarpingBilinearSampleData(cls)
+  local function delta_rois_to_rois(rois, delta_rois)
+    local src_w = rois[{{},3}] - rois[{{},1}] + 1;
+    local src_h = rois[{{},4}] - rois[{{},2}] + 1;
+    local src_ctr_x = rois[{{},1}] + 0.5*(src_w-1.0);
+    local src_ctr_y = rois[{{},2}] + 0.5*(src_h-1.0);
+
+    local dst_ctr_x = delta_rois[{{},1}]; -- dx (in fast-rcnn notation) = cx (in here)
+    local dst_ctr_y = delta_rois[{{},2}]; -- dy (in fast-rcnn notation) = cy (in here)
+    local dst_scl_x = delta_rois[{{},3}]; -- dw (in fast-rcnn notation) = sx (in here)
+    local dst_scl_y = delta_rois[{{},4}]; -- dh (in fast-rcnn notation) = sy (in here)
+
+    local pred_ctr_x = torch.cmul(dst_ctr_x, src_w) + src_ctr_x;
+    local pred_ctr_y = torch.cmul(dst_ctr_y, src_h) + src_ctr_y;
+    local pred_w = torch.cmul(torch.exp(dst_scl_x), src_w);
+    local pred_h = torch.cmul(torch.exp(dst_scl_y), src_h);
+
+    local roi_start_w = pred_ctr_x - 0.5*(pred_w-1)
+    local roi_start_h = pred_ctr_y - 0.5*(pred_h-1)
+    local roi_end_w =   pred_ctr_x + 0.5*(pred_w-1)
+    local roi_end_h =   pred_ctr_y + 0.5*(pred_h-1)
+
+    return torch.cat({roi_start_w, roi_start_h, roi_end_w, roi_end_h}, 2)
+  end
+
+  --pooling grid size
+  local w=4;
+  local h=4;
+  --input size
+  local W=w*2;
+  local H=h*2;
+
+  local batchSize = 3
+  local numRoi = batchSize
+  local numRepeat = 3
+
+  torch.manualSeed(0)
+  for i=1,numRepeat do
+    local input = torch.rand(batchSize, 1, H, W);
+    local roi = randROI(input:size(), numRoi)
+    local delta_roi = roi:clone()
+    delta_roi[{{}, {2, 5}}] = 0.1 * torch.rand(numRoi, 4)
+    local pred_rois = delta_rois_to_rois(roi[{{}, {2, 5}}], delta_roi[{{}, {2, 5}}])
+
+    local preprocess = inn.ROIWarpingGridGenerator(h, w); preprocess:cuda()
+    local output = preprocess:forward({roi:cuda(), delta_roi:cuda()})
+    local grid_ctrs = output[1]:clone()
+    local bin_sizes = output[2]:clone()
+    local roi_batch_inds = output[3]:clone() 
+
+    --print(roi)
+    --print(delta_roi)
+    --print(pred_rois)
+    --print(grid_ctrs:select(4, 1))
+    --print(grid_ctrs:select(4, 2))
+    --print(bin_sizes)
+    --print(roi_batch_inds)
+
+    local module = cls.new(h, w, grid_ctrs, bin_sizes, roi_batch_inds)
+    local err = jac.testJacobian(module, input, nil, nil, 1e-3)
+    mytester:assertlt(err, precision, 'error on ROIWarpingBilinearSampleData ')
+  end
+end
+
+function inntest.ROIWarpingBlinearSampleData()
+  local FixedROIWarpingBilinearSampleData, parent = torch.class('FixedROIWarpingBilinearSampleData', 'inn.ROIWarpingBilinearSample')
+  function FixedROIWarpingBilinearSampleData:__init(H, W, grid_ctrs, bin_sizes, roi_batch_inds)
+    self.grid_ctrs = grid_ctrs:clone() 
+    self.bin_sizes = bin_sizes:clone() 
+    self.roi_batch_inds = roi_batch_inds:clone()
+    parent.__init(self, H, W)
+    self:cuda()
+  end
+
+  function FixedROIWarpingBilinearSampleData:updateOutput(input)
+    return parent.updateOutput(self, {input:cuda(), self.grid_ctrs:cuda(), self.bin_sizes:cuda(), self.roi_batch_inds:cuda()})
+  end
+  function FixedROIWarpingBilinearSampleData:updateGradInput(input, gradOutput)
+    return parent.updateGradInput(self, {input:cuda(), self.grid_ctrs:cuda(), self.bin_sizes:cuda(), self.roi_batch_inds:cuda()}, gradOutput:cuda())[1]
+  end
+
+  testJacobianWithRandomROIForROIWarpingBilinearSampleData(FixedROIWarpingBilinearSampleData)
+end
+
+function testJacobianWithRandomROIForROIWarpingBilinearSampleGridCtrs(cls)
+  local function delta_rois_to_rois(rois, delta_rois)
+    local src_w = rois[{{},3}] - rois[{{},1}] + 1;
+    local src_h = rois[{{},4}] - rois[{{},2}] + 1;
+    local src_ctr_x = rois[{{},1}] + 0.5*(src_w-1.0);
+    local src_ctr_y = rois[{{},2}] + 0.5*(src_h-1.0);
+
+    local dst_ctr_x = delta_rois[{{},1}]; -- dx (in fast-rcnn notation) = cx (in here)
+    local dst_ctr_y = delta_rois[{{},2}]; -- dy (in fast-rcnn notation) = cy (in here)
+    local dst_scl_x = delta_rois[{{},3}]; -- dw (in fast-rcnn notation) = sx (in here)
+    local dst_scl_y = delta_rois[{{},4}]; -- dh (in fast-rcnn notation) = sy (in here)
+
+    local pred_ctr_x = torch.cmul(dst_ctr_x, src_w) + src_ctr_x;
+    local pred_ctr_y = torch.cmul(dst_ctr_y, src_h) + src_ctr_y;
+    local pred_w = torch.cmul(torch.exp(dst_scl_x), src_w);
+    local pred_h = torch.cmul(torch.exp(dst_scl_y), src_h);
+
+    local roi_start_w = pred_ctr_x - 0.5*(pred_w-1)
+    local roi_start_h = pred_ctr_y - 0.5*(pred_h-1)
+    local roi_end_w =   pred_ctr_x + 0.5*(pred_w-1)
+    local roi_end_h =   pred_ctr_y + 0.5*(pred_h-1)
+
+    return torch.cat({roi_start_w, roi_start_h, roi_end_w, roi_end_h}, 2)
+  end
+
+  --pooling grid size
+  local w=4;
+  local h=4;
+  --input size
+  local W=w*2;
+  local H=h*2;
+
+  local batchSize = 3
+  local numRoi = batchSize
+  local numRepeat = 3
+
+  torch.manualSeed(0)
+  for i=1,numRepeat do
+    local img = torch.rand(batchSize, 1, H, W);
+    local roi = randROI(img:size(), numRoi)
+    local delta_roi = roi:clone()
+    delta_roi[{{}, {2, 5}}] = 0.1 * torch.rand(numRoi, 4)
+    local pred_rois = delta_rois_to_rois(roi[{{}, {2, 5}}], delta_roi[{{}, {2, 5}}])
+
+    local preprocess = inn.ROIWarpingGridGenerator(h, w); preprocess:cuda()
+    local output = preprocess:forward({roi:cuda(), delta_roi:cuda()})
+    --local grid_ctrs = output[1]:clone()
+    local input = output[1]:clone()
+    local bin_sizes = output[2]:clone()
+    local roi_batch_inds = output[3]:clone() 
+
+    --print(roi)
+    --print(delta_roi)
+    --print(pred_rois)
+    --print(grid_ctrs:select(4, 1))
+    --print(grid_ctrs:select(4, 2))
+    --print(bin_sizes)
+    --print(roi_batch_inds)
+
+    local module = cls.new(h, w, img, bin_sizes, roi_batch_inds)
+    local err = jac.testJacobian(module, input, nil, nil, 1e-3)
+    mytester:assertlt(err, precision, 'error on ROIWarpingBilinearSample ')
+  end
+end
+
+function inntest.ROIWarpingBlinearSampleGridCtrs()
+  local FixedROIWarpingBilinearSampleGridCtrs, parent = torch.class('FixedROIWarpingBilinearSampleGridCtrs', 'inn.ROIWarpingBilinearSample')
+  function FixedROIWarpingBilinearSampleGridCtrs:__init(H, W, img, bin_sizes, roi_batch_inds)
+    self.img = img:clone()
+    self.bin_sizes = bin_sizes:clone()
+    self.roi_batch_inds = roi_batch_inds:clone()
+    parent.__init(self, H, W)
+    self:cuda()
+  end
+
+  function FixedROIWarpingBilinearSampleGridCtrs:updateOutput(input)
+    return parent.updateOutput(self, {self.img:cuda(), input:cuda(), self.bin_sizes:cuda(), self.roi_batch_inds:cuda()})
+  end
+  function FixedROIWarpingBilinearSampleGridCtrs:updateGradInput(input, gradOutput)
+    return parent.updateGradInput(self, {self.img:cuda(), input:cuda(), self.bin_sizes:cuda(), self.roi_batch_inds:cuda()}, gradOutput:cuda())[2]
+  end
+
+  testJacobianWithRandomROIForROIWarpingBilinearSampleGridCtrs(FixedROIWarpingBilinearSampleGridCtrs)
 end
 
 jac = nn.Jacobian
