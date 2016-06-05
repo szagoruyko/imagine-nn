@@ -9,4 +9,7 @@ require 'inn.MeanSubtraction'
 require 'inn.SpatialPyramidPooling'
 require 'inn.SpatialSameResponseNormalization'
 require 'inn.ROIPooling'
+require 'inn.ROIWarping'
+require 'inn.ROIWarpingGridGenerator'
+require 'inn.ROIWarpingBilinearSample'
 return inn
