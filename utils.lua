@@ -1,3 +1,4 @@
+local inn = require 'inn'
 local utils = {}
 
 -- a script to simplify trained net by incorporating every Spatial/VolumetricBatchNormalization
@@ -62,6 +63,33 @@ function utils.foldBatchNorm(net)
      if #modules > 0 then print('Couldnt fold these:', modules) end
   end
 end
+
+function utils.BNtoFixed(net, ip)
+  local net = net:replace(function(x)
+      if torch.typename(x):find'BatchNormalization' then
+        local no = x.running_mean:numel()
+        local y = inn.ConstAffine(no, ip):type(x.running_mean:type())
+        assert(x.running_var and not x.running_std)
+        local invstd = x.running_var:double():add(x.eps):pow(-0.5):cuda()
+        y.a:copy(invstd)
+        y.b:copy(-x.running_mean:double():cmul(invstd:double()))
+        if x.affine then
+          y.a:cmul(x.weight)
+          y.b:cmul(x.weight):add(x.bias)
+        end
+        return y
+      else
+        return x
+      end
+    end
+  )
+  assert(#net:findModules'nn.SpatialBatchNormalization' == 0)
+  assert(#net:findModules'nn.BatchNormalization' == 0)
+  assert(#net:findModules'cudnn.SpatialBatchNormalization' == 0)
+  assert(#net:findModules'cudnn.BatchNormalization' == 0)
+  return net
+end
+
 
 
 function utils.testSurgery(input, f, net, ...)

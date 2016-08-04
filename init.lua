@@ -1,5 +1,5 @@
 require 'nn'
-inn = {}
+inn = require 'inn.env'
 inn.C = require 'inn.ffi'
 require 'inn.SpatialMaxPooling'
 require 'inn.SpatialAveragePooling'
