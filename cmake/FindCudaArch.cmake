@@ -42,6 +42,7 @@ FUNCTION(DETECT_INSTALLED_GPUS OUT_VARIABLE)
       "}\n")
 
     EXECUTE_PROCESS(COMMAND "${CUDA_NVCC_EXECUTABLE}" "--run" "${__cufile}"
+                    "-ccbin" ${CMAKE_CXX_COMPILER}
                     WORKING_DIRECTORY "${PROJECT_BINARY_DIR}/CMakeFiles/"
                     RESULT_VARIABLE __nvcc_res OUTPUT_VARIABLE __nvcc_out
                     ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
