@@ -1,4 +1,4 @@
-local inn = require 'inn'
+local inn = require 'inn.env'
 local utils = {}
 
 -- a script to simplify trained net by incorporating every Spatial/VolumetricBatchNormalization
@@ -20,7 +20,7 @@ local function BNtoConv(net)
         local conv = pre
         local bn = v
         net:remove(i)
-        local no = conv.nOutputPlane
+        local no = conv.weight:size(1)
         local conv_w = conv.weight:view(no,-1)
         local fold = function()
            local invstd = bn.running_var and (bn.running_var + bn.eps):pow(-0.5) or bn.running_std
@@ -39,7 +39,7 @@ local function BNtoConv(net)
              assert(conv.biasDesc)
           end
         end
-        if cutorch then cutorch.withDevice(conv_w:getDevice(),fold) else fold() end
+        if cutorch and conv_w.getDevice then cutorch.withDevice(conv_w:getDevice(),fold) else fold() end
       end
     end
   end
