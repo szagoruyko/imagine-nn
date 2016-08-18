@@ -1,3 +1,4 @@
+local inn = require 'inn.env'
 local utils = {}
 
 -- a script to simplify trained net by incorporating every Spatial/VolumetricBatchNormalization
@@ -19,7 +20,7 @@ local function BNtoConv(net)
         local conv = pre
         local bn = v
         net:remove(i)
-        local no = conv.nOutputPlane
+        local no = conv.weight:size(1)
         local conv_w = conv.weight:view(no,-1)
         local fold = function()
            local invstd = bn.running_var and (bn.running_var + bn.eps):pow(-0.5) or bn.running_std
@@ -38,7 +39,7 @@ local function BNtoConv(net)
              assert(conv.biasDesc)
           end
         end
-        if cutorch then cutorch.withDevice(conv_w:getDevice(),fold) else fold() end
+        if cutorch and conv_w.getDevice then cutorch.withDevice(conv_w:getDevice(),fold) else fold() end
       end
     end
   end
@@ -62,6 +63,33 @@ function utils.foldBatchNorm(net)
      if #modules > 0 then print('Couldnt fold these:', modules) end
   end
 end
+
+function utils.BNtoFixed(net, ip)
+  local net = net:replace(function(x)
+      if torch.typename(x):find'BatchNormalization' then
+        local no = x.running_mean:numel()
+        local y = inn.ConstAffine(no, ip):type(x.running_mean:type())
+        assert(x.running_var and not x.running_std)
+        local invstd = x.running_var:double():add(x.eps):pow(-0.5):cuda()
+        y.a:copy(invstd)
+        y.b:copy(-x.running_mean:double():cmul(invstd:double()))
+        if x.affine then
+          y.a:cmul(x.weight)
+          y.b:cmul(x.weight):add(x.bias)
+        end
+        return y
+      else
+        return x
+      end
+    end
+  )
+  assert(#net:findModules'nn.SpatialBatchNormalization' == 0)
+  assert(#net:findModules'nn.BatchNormalization' == 0)
+  assert(#net:findModules'cudnn.SpatialBatchNormalization' == 0)
+  assert(#net:findModules'cudnn.BatchNormalization' == 0)
+  return net
+end
+
 
 
 function utils.testSurgery(input, f, net, ...)
